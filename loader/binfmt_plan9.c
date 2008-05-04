@@ -56,6 +56,7 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	struct plan9_exec ex;
 	unsigned long rlim, fu, tu, retval, textpos = 0, datapos = 0, fpos = 0, tot = 0;
 	char *page;
+	struct vm_area_struct *vma = bprm->vma;
 	
 	/* Load header and fix big-endianess: we are concerned with x86 only */
 	ex       = *((struct plan9_exec *) bprm->buf);
@@ -134,16 +135,20 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 			PROT_READ | PROT_WRITE,
 			MAP_FIXED | MAP_PRIVATE, PAGE_ALIGN(ex.text + 0x20));
 	up_write(&current->mm->mmap_sem);
-
-	print_mems();
+	
 	set_binfmt(&plan9_format);
 	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
+	print_mems();
+	
+    printk(KERN_ALERT "P9: Return from arg_pages: %d\n", retval);
+    
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);
 		return retval;
 	}
 	
-	current->mm->start_stack = TASK_SIZE;
+    printk(KERN_ALERT "P9: BPRM Value: %lx\n", bprm->p);
+    current->mm->start_stack = bprm->p;
 	
 	start_thread(regs, ex.entry, current->mm->start_stack);
 	if (unlikely(current->ptrace & PT_PTRACED)) {
@@ -152,7 +157,6 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 		else
 			send_sig(SIGTRAP, current, 0);
 	}
-	copy_in_user();
 	return 0;		
 	/* Alright, we can't mmap in parts since they are not page aligned.
 	 * we map the whole file to memory and move around the data to the
