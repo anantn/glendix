@@ -812,14 +812,16 @@ asmlinkage int sys_vfork(struct pt_regs regs)
  * sys_plan9() calls an appropriate 9syscall
  */
 asmlinkage long sys_plan9(struct pt_regs regs)
-{
-    printk(KERN_ALERT "Recieved sys_plan9 call with number %d\n", regs.eax);
+{   
+    loff_t offset;
     unsigned long *addr;
     unsigned long retval = 0;
-    unsigned long long offset;
     unsigned long arg1, arg2, arg3;
     addr = (unsigned long *)regs.esp;
-    
+ 
+    printk(KERN_ALERT "P9: Recieved sys_plan9 call with number %ld\n", regs.eax);
+    printk(KERN_ALERT "P9: EIP Value: %lx\n", regs.eip);
+       
     /* Implementation of the 9calls
      * Keep replacing 'goto out' as we move ahead!
      * calls beginning with '_' need not be implemented at all
@@ -832,17 +834,27 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 2: /* bind */
             goto out;
         case 3: /* chdir */
-            goto out;
+            arg1 = *(++addr);
+            printk(KERN_ALERT "P9: chdir: %lx\n", arg1);
+            retval = sys_chdir(arg1);
+            break;
         case 4: /* close */
-            goto out;
+            arg1 = *(++addr);
+            printk(KERN_ALERT "P9: close: %lx\n", arg1);
+            retval = sys_close(arg1);
+            break;
         case 5: /* dup */
-            goto out;
+            arg1 = *(++addr);
+            arg2 = *(++addr);
+            printk(KERN_ALERT "P9: dup: %lx %lx\n", arg1, arg2);
+            retval = sys_dup2(arg1, arg2);
+            break;
         case 6: /* alarm */
             goto out;
         case 7: /* exec */
             goto out;
         case 8: /* exits */
-            printk(KERN_ALERT "Calling sys_exit(1)\n");
+            printk(KERN_ALERT "P9: Calling sys_exit(1)\n");
             retval = sys_exit(1);
             break;
         case 9: /* _fsession */
@@ -856,7 +868,11 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 13: /* _mount */
             goto out;
         case 14: /* open */
-            goto out;
+            arg1 = *(++addr);
+            arg2 = *(++addr); // FIXME: Mode needs to be check in all combos!
+            printk(KERN_ALERT "P9: open: %lx %lx\n", arg1, arg2);
+            retval = sys_open((const char __user *)arg1, arg2, (int) NULL);
+            break;
         case 15: /* _read */
             goto out;
         case 16: /* oseek */
@@ -876,7 +892,10 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 23: /* fd2path */
             goto out;
         case 24: /* brk_ */
-            goto out;
+            arg1 = *(++addr);
+            printk(KERN_ALERT "P9: brk: %lx\n", arg1);
+            retval = sys_brk(arg1);
+            break;
         case 25: /* remove */
             break;
         case 26: /* _wstat */
@@ -928,19 +947,34 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 49: /* !MISSING! */
             goto out;
         case 50: /* pread */
-            goto out;
-        case 51: /* pwrite */
-            offset = *(addr);
-            addr = addr + 2;
-            arg3 = *(addr);
-            arg2 = *(++addr);
             arg1 = *(++addr);
+            arg2 = *(++addr);
+            arg3 = *(++addr);
+            addr = addr + 2;
+            offset = (loff_t) *(addr);
+            printk(KERN_ALERT "P9: pread: %lx %lx %lx %llx\n", arg1, arg2, arg3, offset);
+            
+            if (offset == 0xffffffff)
+                retval = sys_read(arg1, (char __user *)arg2, arg3);
+            else
+                retval = sys_pread64(arg1, (char __user *)arg2, arg3, offset);
+            break;
+        case 51: /* pwrite */
+            arg1 = *(++addr);
+            arg2 = *(++addr);
+            arg3 = *(++addr);
+            addr = addr + 2;
+            offset = (loff_t) *(addr);
             printk(KERN_ALERT "P9: pwrite: %lx %lx %lx %llx\n", arg1, arg2, arg3, offset);
-            retval = sys_write(arg1, arg2, arg3);
+            
+            if (offset == 0xffffffff)
+                retval = sys_write(arg1, (const char __user *)arg2, arg3);
+            else
+                retval = sys_pwrite64(arg1, (const char __user *)arg2, arg3, offset);
             break;
         default:
 out:
-            printk(KERN_ALERT "P9: System call number %d unimplemented or missing, silently ignoring!\n", regs.eax);
+            printk(KERN_ALERT "P9: System call number %ld unimplemented or missing, silently ignoring!\n", regs.eax);
             break;
     }
     return retval;
