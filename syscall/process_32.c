@@ -836,7 +836,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 3: /* chdir */
             arg1 = *(++addr);
             printk(KERN_ALERT "P9: chdir: %lx\n", arg1);
-            retval = sys_chdir(arg1);
+            retval = sys_chdir((char __user *)arg1);
             break;
         case 4: /* close */
             arg1 = *(++addr);
@@ -890,7 +890,12 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 22: /* create */
             goto out;
         case 23: /* fd2path */
-            goto out;
+            arg1 = *(++addr);
+            arg2 = *(++addr);
+            arg3 = *(++addr);
+            printk(KERN_ALERT "P9: fd2path: %lx %lx %lx\n", arg1, arg2, arg3);
+            retval = sys_fd2path(arg1, (char __user *)arg2, arg3);
+            break;
         case 24: /* brk_ */
             arg1 = *(++addr);
             printk(KERN_ALERT "P9: brk: %lx\n", arg1);
