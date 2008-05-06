@@ -81,11 +81,8 @@ static unsigned long __user *create_args(char __user *p, struct linux_binprm * b
 
 static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 {
-	loff_t pos;
 	struct plan9_exec ex;
-	unsigned long rlim, fu, tu, retval, textpos = 0, datapos = 0, fpos = 0, tot = 0;
-	char *page;
-	struct vm_area_struct *vma = bprm->vma;
+	unsigned long rlim, retval, fpos = 0, tot = 0;
 	
 	/* Load header and fix big-endianess: we are concerned with x86 only */
 	ex       = *((struct plan9_exec *) bprm->buf);
