@@ -813,14 +813,27 @@ asmlinkage int sys_vfork(struct pt_regs regs)
  */
 asmlinkage long sys_plan9(struct pt_regs regs)
 {   
+    char* names[52] = {
+        "sysr1", "_errstr", "bind", "chdir", "close",
+        "dup", "alarm", "exec", "exits", "_fsession",
+        "fauth", "_fstat", "segbrk", "_mount", "open",
+        "_read", "oseek", "sleep", "_stat", "rfork",
+        "_write", "pipe", "create", "fd2path", "brk_",
+        "remove", "_wstat", "_fwstat", "notify", "noted",
+        "segattach", "segdetach", "segfree", "segflush", "rendezvous",
+        "unmount", "_wait", "semacquire", "semrelease", "seek",
+        "fversion", "errstr", "stat", "fstat", "wstat",
+        "fwstat", "mount", "await", "MISSING", "MISSING",
+        "pread", "pwrite"
+    };
+    
     loff_t offset;
     unsigned long *addr;
     unsigned long retval = 0;
     unsigned long arg1, arg2, arg3;
     addr = (unsigned long *)regs.esp;
  
-    printk(KERN_ALERT "P9: Recieved sys_plan9 call with number %ld\n", regs.eax);
-    printk(KERN_ALERT "P9: EIP Value: %lx\n", regs.eip);
+    printk(KERN_ALERT "P9: System call %s at %lx\n", names[regs.eax], regs.eip);
        
     /* Implementation of the 9calls
      * Keep replacing 'goto out' as we move ahead!
@@ -870,7 +883,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 14: /* open */
             arg1 = *(++addr);
             arg2 = *(++addr); // FIXME: Mode needs to be check in all combos!
-            printk(KERN_ALERT "P9: open: %lx %lx\n", arg1, arg2);
+            printk(KERN_ALERT "P9: open: %s %lx\n", (char __user *)arg1, arg2);
             retval = sys_open((const char __user *)arg1, arg2, (int) NULL);
             break;
         case 15: /* _read */
