@@ -59,18 +59,15 @@ static unsigned long __user *create_args(char __user *p, struct linux_binprm * b
 	sp = (void __user *)((-(unsigned long)sizeof(char *)) & (unsigned long) p);
 	sp -= argc+1;
 	argv = (char __user * __user *) sp;
-	
-#if defined(__i386__) || defined(__mc68000__) || defined(__arm__) || defined(__arch_um__)
-	put_user((unsigned long) argv,--sp);
-#endif
 
-	put_user(argc,--sp);
+	put_user(argc, --sp);
+	
 	current->mm->arg_start = (unsigned long) p;
 	while (argc-->0) {
 		char c;
-		put_user(p,argv++);
+		put_user(p, argv++);
 		do {
-			get_user(c,p++);
+			get_user(c, p++);
 		} while (c);
 	}
 	put_user(NULL,argv);
