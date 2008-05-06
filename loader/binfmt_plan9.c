@@ -50,6 +50,35 @@ void print_mems(void)
 	}
 }
 
+static unsigned long __user *create_args(char __user *p, struct linux_binprm * bprm)
+{
+	char __user * __user *argv;
+	unsigned long __user *sp;
+	int argc = bprm->argc;
+
+	sp = (void __user *)((-(unsigned long)sizeof(char *)) & (unsigned long) p);
+	sp -= argc+1;
+	argv = (char __user * __user *) sp;
+	
+#if defined(__i386__) || defined(__mc68000__) || defined(__arm__) || defined(__arch_um__)
+	put_user((unsigned long) argv,--sp);
+#endif
+
+	put_user(argc,--sp);
+	current->mm->arg_start = (unsigned long) p;
+	while (argc-->0) {
+		char c;
+		put_user(p,argv++);
+		do {
+			get_user(c,p++);
+		} while (c);
+	}
+	put_user(NULL,argv);
+	current->mm->arg_end = current->mm->env_start = current->mm->env_end = (unsigned long) p;
+
+	return sp;
+}
+
 static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 {
 	loff_t pos;
@@ -148,7 +177,8 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	}
 	
     printk(KERN_ALERT "P9: BPRM Value: %lx\n", bprm->p);
-    current->mm->start_stack = bprm->p;
+    current->mm->start_stack = 
+        (unsigned long) create_args((char __user *) bprm->p, bprm);
 	
 	start_thread(regs, ex.entry, current->mm->start_stack);
 	if (unlikely(current->ptrace & PT_PTRACED)) {
@@ -157,7 +187,8 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 		else
 			send_sig(SIGTRAP, current, 0);
 	}
-	return 0;		
+	return 0;
+	
 	/* Alright, we can't mmap in parts since they are not page aligned.
 	 * we map the whole file to memory and move around the data to the
 	 * actual locations 
