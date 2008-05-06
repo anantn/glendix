@@ -830,7 +830,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
     loff_t offset;
     unsigned long *addr;
     unsigned long retval = 0;
-    unsigned long arg1, arg2, arg3;
+    unsigned long arg1, arg2, arg3, arg4;
     addr = (unsigned long *)regs.esp;
        
     printk(KERN_ALERT "P9: %s @ %lx = ", names[regs.eax], regs.eip);
@@ -943,12 +943,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             goto out;
         case 39: /* seek */
             arg1 = *(++addr);
-            addr = addr + 2;
-            offset = (off_t) *(addr);
             arg2 = *(++addr);
+            addr = addr + 2;
+            offset = (loff_t) *(addr);
+            arg3 = *(++addr);
             retval = sys_lseek(arg1, 0, 0);
             /* Lucky for us, arg2 is defined the same 0, 1, 2! */
-            printk(KERN_ALERT "%lx (%lx)\n", retval, arg1);
+            printk(KERN_ALERT "%lx (%lx, %lx, %llx, %lx)\n", retval, arg1, arg2, offset, arg3);
             break;
         case 40: /* fversion */
             goto out;
@@ -988,6 +989,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             arg1 = *(++addr);
             arg2 = *(++addr);
             arg3 = *(++addr);
+            arg4 = *(++addr);
             addr = addr + 2;
             offset = (loff_t) *(addr);
             
@@ -996,7 +998,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             else
                 retval = sys_pwrite64(arg1, (const char __user *)arg2, arg3, offset);
             
-            printk(KERN_ALERT "%lx (%lx, %lx, %lx, %llx)\n", retval, arg1, arg2, arg3, offset);
+            printk(KERN_ALERT "%lx (%lx, %lx, %lx, %lx, %llx)\n", retval, arg1, arg2, arg3, arg4, offset);
             break;
         default:
 out:
