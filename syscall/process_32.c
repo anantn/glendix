@@ -848,27 +848,27 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             goto out;
         case 3: /* chdir */
             arg1 = *(++addr);
-            printk(KERN_ALERT "P9: chdir: %lx\n", arg1);
             retval = sys_chdir((char __user *)arg1);
+            printk(KERN_ALERT "P9: chdir = %ld: (%lx)\n", retval, arg1);
             break;
         case 4: /* close */
             arg1 = *(++addr);
-            printk(KERN_ALERT "P9: close: %lx\n", arg1);
             retval = sys_close(arg1);
+            printk(KERN_ALERT "P9: close = %ld: (%lx)\n", retval, arg1);
             break;
         case 5: /* dup */
             arg1 = *(++addr);
             arg2 = *(++addr);
-            printk(KERN_ALERT "P9: dup: %lx %lx\n", arg1, arg2);
             retval = sys_dup2(arg1, arg2);
+            printk(KERN_ALERT "P9: dup = %ld: (%lx, %lx)\n", retval, arg1, arg2);
             break;
         case 6: /* alarm */
             goto out;
         case 7: /* exec */
             goto out;
         case 8: /* exits */
-            printk(KERN_ALERT "P9: Calling sys_exit(1)\n");
             retval = sys_exit(1);
+            printk(KERN_ALERT "P9: sys_exit(1)\n");
             break;
         case 9: /* _fsession */
             goto out;
@@ -883,8 +883,8 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 14: /* open */
             arg1 = *(++addr);
             arg2 = *(++addr); // FIXME: Mode needs to be check in all combos!
-            printk(KERN_ALERT "P9: open: %s %lx\n", (char __user *)arg1, arg2);
             retval = sys_open((const char __user *)arg1, arg2, (int) NULL);
+            printk(KERN_ALERT "P9: open = %ld: (%s, %lx)\n", retval, (char __user *)arg1, arg2);
             break;
         case 15: /* _read */
             goto out;
@@ -906,13 +906,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             arg1 = *(++addr);
             arg2 = *(++addr);
             arg3 = *(++addr);
-            printk(KERN_ALERT "P9: fd2path: %lx %lx %lx\n", arg1, arg2, arg3);
             retval = sys_fd2path(arg1, (char __user *)arg2, arg3);
+            printk(KERN_ALERT "P9: fd2path = %ld: (%lx, %lx, %lx)\n", retval, arg1, arg2, arg3);
             break;
         case 24: /* brk_ */
             arg1 = *(++addr);
-            printk(KERN_ALERT "P9: brk: %lx\n", arg1);
             retval = sys_brk(arg1);
+            printk(KERN_ALERT "P9: brk = %ld: (%lx)\n", retval, arg1);
             break;
         case 25: /* remove */
             break;
@@ -943,7 +943,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 38: /* semrelease */
             goto out;
         case 39: /* seek */
-            goto out;
+            arg1 = *(++addr);
+            addr = addr + 2;
+            offset = (off_t) *(++addr);
+            arg2 = *(++addr);
+            /* Lucky for us, arg2 is defined the same 0, 1, 2! */
+            printk(KERN_ALERT "P9: seek: %lx %llx %lx\n", arg1, offset, arg2);
+            break;
         case 40: /* fversion */
             goto out;
         case 41: /* errstr */
@@ -970,12 +976,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             arg3 = *(++addr);
             addr = addr + 2;
             offset = (loff_t) *(addr);
-            printk(KERN_ALERT "P9: pread: %lx %lx %lx %llx\n", arg1, arg2, arg3, offset);
             
             if (offset == 0xffffffff)
                 retval = sys_read(arg1, (char __user *)arg2, arg3);
             else
                 retval = sys_pread64(arg1, (char __user *)arg2, arg3, offset);
+                
+            printk(KERN_ALERT "P9: pread = %ld: (%lx, %lx, %lx, %llx)\n", retval, arg1, arg2, arg3, offset);
             break;
         case 51: /* pwrite */
             arg1 = *(++addr);
@@ -983,12 +990,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             arg3 = *(++addr);
             addr = addr + 2;
             offset = (loff_t) *(addr);
-            printk(KERN_ALERT "P9: pwrite: %lx %lx %lx %llx\n", arg1, arg2, arg3, offset);
             
             if (offset == 0xffffffff)
                 retval = sys_write(arg1, (const char __user *)arg2, arg3);
             else
                 retval = sys_pwrite64(arg1, (const char __user *)arg2, arg3, offset);
+            
+            printk(KERN_ALERT "P9: pwrite = %ld: (%lx, %lx, %lx, %llx)\n", retval, arg1, arg2, arg3, offset);
             break;
         default:
 out:
