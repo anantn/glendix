@@ -947,8 +947,10 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             addr = addr + 2;
             offset = (loff_t) *(addr);
             arg3 = *(++addr);
-            retval = sys_lseek(arg1, 0, 0);
+            
             /* Lucky for us, arg2 is defined the same 0, 1, 2! */
+            retval = sys_lseek(arg2, (off_t) offset, arg3);
+            
             printk(KERN_ALERT "%lx (%lx, %lx, %llx, %lx)\n", retval, arg1, arg2, offset, arg3);
             break;
         case 40: /* fversion */
