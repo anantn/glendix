@@ -830,7 +830,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
     loff_t offset;
     unsigned long *addr;
     unsigned long retval = 0;
-    unsigned long arg1, arg2, arg3, arg4;
+    unsigned long arg1, arg2, arg3;
     addr = (unsigned long *)regs.esp;
        
     printk(KERN_ALERT "P9: %s @ %lx = \n", names[regs.eax], regs.eip);
@@ -1000,7 +1000,6 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             arg1 = *(++addr);
             arg2 = *(++addr);
             arg3 = *(++addr);
-            arg4 = *(++addr);
             addr = addr + 2;
             offset = (loff_t) *(addr);
             
@@ -1009,7 +1008,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             else
                 retval = sys_pwrite64(arg1, (const char __user *)arg2, arg3, offset);
             
-            printk(KERN_ALERT "%lx (%lx, %lx, %lx, %lx, %llx)\n", retval, arg1, arg2, arg3, arg4, offset);
+            printk(KERN_ALERT "%lx (%lx, %lx, %lx, %llx)\n", retval, arg1, arg2, arg3, offset);
             break;
         default:
 out:
