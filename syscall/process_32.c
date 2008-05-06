@@ -833,7 +833,7 @@ asmlinkage long sys_plan9(struct pt_regs regs)
     unsigned long arg1, arg2, arg3, arg4;
     addr = (unsigned long *)regs.esp;
        
-    printk(KERN_ALERT "P9: %s @ %lx = ", names[regs.eax], regs.eip);
+    printk(KERN_ALERT "P9: %s @ %lx = \n", names[regs.eax], regs.eip);
     /* Implementation of the 9calls
      * Keep replacing 'goto out' as we move ahead!
      * calls beginning with '_' need not be implemented at all
@@ -900,7 +900,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 21: /* pipe */
             goto out;
         case 22: /* create */
-            goto out;
+            arg1 = *(++addr);
+            arg2 = *(++addr);
+            arg3 = *(++addr);
+            /* FIXME: Mode check! */
+            retval = sys_open((const char __user *)arg1, arg2 | O_CREAT, arg3);
+            printk(KERN_ALERT "%lx (%s, %lx, %lx)\n", retval, (const char __user *)arg1, arg2, arg3);
+            break;
         case 23: /* fd2path */
             arg1 = *(++addr);
             arg2 = *(++addr);
@@ -914,6 +920,9 @@ asmlinkage long sys_plan9(struct pt_regs regs)
             printk(KERN_ALERT "%lx (%lx)\n", retval, arg1);
             break;
         case 25: /* remove */
+            arg1 = *(++addr);
+            retval = sys_unlink((const char __user *)arg1);
+            printk(KERN_ALERT "%lx (%s)\n", retval, (const char __user *)arg1);
             break;
         case 26: /* _wstat */
             goto out;
@@ -1007,6 +1016,7 @@ out:
             printk(KERN_ALERT "P9: System call number %ld unimplemented or missing, silently ignoring!\n", regs.eax);
             break;
     }
+    printk(KERN_ALERT "\n");
     return retval;
 }
 
