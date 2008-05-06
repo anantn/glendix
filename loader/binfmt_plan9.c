@@ -45,7 +45,7 @@ void print_mems(void)
 	int i = 1;
 	struct vm_area_struct* blah = current->mm->mmap;
 	while (blah != NULL) {
-		printk(KERN_ALERT "P9: Range %d: %lx to %lx\n", i++, blah->vm_start, blah->vm_end);
+		printk(KERN_ALERT "9load: Range %d: %lx to %lx\n", i++, blah->vm_start, blah->vm_end);
 		blah = blah->vm_next;
 	}
 }
@@ -103,7 +103,7 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	/* Check if this is really a plan 9 executable */
 	if (ex.magic != I_MAGIC)
 		return -ENOEXEC;
-	printk(KERN_ALERT "P9: %lx %lx %lx %lx %lx %lx\n", ex.magic, ex.text, ex.data, ex.bss, ex.syms, ex.entry);
+	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx\n", ex.magic, ex.text, ex.data, ex.bss, ex.syms, ex.entry);
 		
 	/* Check initial limits. This avoids letting people circumvent
 	 * size limits imposed on them by creating programs with large
@@ -118,7 +118,7 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	/* Flush all traces of the currently running executable */
 	retval = flush_old_exec(bprm);
 	if (retval) {
-		printk(KERN_ALERT "P9: flush failed! %lx\n", retval);
+		printk(KERN_ALERT "9load: flush failed! %lx\n", retval);
 		return retval;
 	}
 	/* Point of no return */
@@ -139,8 +139,7 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	//compute_creds(bprm);
 	current->flags &= ~PF_FORKNOEXEC;
 
-	print_mems();
-	printk(KERN_ALERT "P9: %lx %lx %lx %lx %lx %lx %lx %lx\n",
+	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx %lx %lx\n",
 						current->mm->start_code,
 						current->mm->end_code,
 						current->mm->start_data,
@@ -157,7 +156,6 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 			MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
 	up_write(&current->mm->mmap_sem);
 	
-	printk(KERN_ALERT "P9: Page aligned Offset: %lx\n", PAGE_ALIGN(ex.text + 0x20));
 	/* mmap data in */
 	down_write(&current->mm->mmap_sem);
 	fpos = do_mmap(bprm->file, 0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss,
@@ -167,19 +165,19 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	
 	set_binfmt(&plan9_format);
 	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
-	print_mems();
-	
-    printk(KERN_ALERT "P9: Return from arg_pages: %d\n", retval);
     
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);
 		return retval;
 	}
 	
-    printk(KERN_ALERT "P9: BPRM Value: %lx\n", bprm->p);
+    printk(KERN_ALERT "9load: BPRM Value: %lx\n", bprm->p);
     current->mm->start_stack = 
         (unsigned long) create_args((char __user *) bprm->p, bprm);
+	printk(KERN_ALERT "9load: Stack start: %lx\n", current->mm->start_stack);
 	
+    print_mems();
+    
 	start_thread(regs, ex.entry, current->mm->start_stack);
 	if (unlikely(current->ptrace & PT_PTRACED)) {
 		if (current->ptrace & PT_TRACE_EXEC)
