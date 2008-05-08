@@ -50,13 +50,18 @@ void print_mems(void)
 	}
 }
 
-static unsigned long __user *create_args(char __user *p, struct linux_binprm * bprm)
+static unsigned long __user *create_args(char __user * p, struct linux_binprm * bprm, struct pt_regs * regs)
 {
 	char __user * __user *argv;
 	unsigned long __user *sp;
 	int argc = bprm->argc;
-
+    
 	sp = (void __user *)((-(unsigned long)sizeof(char *)) & (unsigned long) p);
+	
+	/* leave space for TOS: 56 / 4 = 14 */
+    sp -= 14;
+    regs->eax = sp;
+    
 	sp -= argc+1;
 	argv = (char __user * __user *) sp;
 
@@ -158,6 +163,7 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	up_write(&current->mm->mmap_sem);
 	
 	set_binfmt(&plan9_format);
+	
 	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
     
 	if (retval < 0) {
@@ -166,13 +172,16 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	}
 	
     printk(KERN_ALERT "9load: BPRM Value: %lx\n", bprm->p);
+    
     current->mm->start_stack = 
-        (unsigned long) create_args((char __user *) bprm->p, bprm);
-	printk(KERN_ALERT "9load: Stack start: %lx\n", current->mm->start_stack);
+        (unsigned long) create_args((char __user *) bprm->p, bprm, regs);
+	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->eax);
 	
     print_mems();
     
 	start_thread(regs, ex.entry, current->mm->start_stack);
+	printk(KERN_ALERT "9load: Program started: EAX: %lx, EIP: %lx\n", regs->eax, regs->eip);
+	
 	if (unlikely(current->ptrace & PT_PTRACED)) {
 		if (current->ptrace & PT_TRACE_EXEC)
 			ptrace_notify ((PTRACE_EVENT_EXEC << 8) | SIGTRAP);
