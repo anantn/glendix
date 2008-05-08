@@ -39,7 +39,7 @@ void endian_swap(struct plan9_exec *ex)
 void usage(const char* msg)
 {
 	if (!msg)
-		printf("./pad <8.out> <output>\n");
+		printf("./pad <8.out>\n");
 	else
 		printf("%s\n", msg);
 	if (fd)
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 	char header[HLEN];
 	struct plan9_exec ex;
 	
-	if (argc != 3)
+	if (argc != 2)
 		usage(NULL);
 		
 	fd = fopen(argv[1], "rb");
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
 	fread(text, sizeof(char), ex.text, fd);
 	pd = PAGE_ALIGN(ex.text + HLEN) - (ex.text + HLEN);
 	
-	printf("P9: Padding %lx bytes from %lx\n", ex.text + HLEN);
+	printf("P9: Padding %lx bytes from %lx\n", pd, ex.text + HLEN);
 	pad = calloc(pd, sizeof(char));
 	
 	data = calloc(ex.text, sizeof(char));
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 	bss = calloc(ex.bss, sizeof(char));
 	fclose(fd);
 	fd = NULL;
-	fd = fopen(argv[2], "wb+");
+	fd = fopen("linux.out", "wb+");
 	if (!fd)
 		usage("Can't write to output file, Invalid!\n");
 		
@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 	fwrite(pad, sizeof(char), pd, fd);
 	fwrite(data, sizeof(char), ex.data, fd);
 	fwrite(bss, sizeof(char), ex.bss, fd);
-	printf("Done! Output written to %s\n", DESTINATION);
+	printf("Done! Output written to linux.out\n");
 	
 	fclose(fd);
 }
