@@ -10,6 +10,8 @@
 #define PAGE_MASK		(~(PAGE_SIZE-1))
 #define	PAGE_ALIGN(x)	(((x)+PAGE_SIZE-1)&PAGE_MASK)
 
+#define char unsigned char
+
 FILE* fd = NULL;
 FILE* fo = NULL;
 
@@ -49,7 +51,7 @@ void usage(const char* msg)
 
 int main(int argc, char* argv[])
 {
-	int pd;
+    int pd, o;
 	char* bss;
 	char* pad;
 	char* text;
@@ -89,7 +91,19 @@ int main(int argc, char* argv[])
 	fd = fopen("linux.out", "wb+");
 	if (!fd)
 		usage("Can't write to output file, Invalid!\n");
-		
+	
+	/* Check for _main and mangle MOV EAX, _tos(SB) appropriately.
+	 * Convert opcode 89 05 to 89 1D */
+    o = ex.entry - 0x1000 - 0x20;
+    if (text[o] == (char)0x83 && text[o+1] == (char)0xec && text[o+2] == (char)0x48) {
+        printf("Executable is linked with libc.a, mangling _tos...\n");
+        if (text[o+3] == (char)0x89 && text[o+4] == (char)0x05) {
+            printf("MOVL AX, _tos(SB) found, chaning 0x05 to 0x1D... ");
+            text[o+4] = (char)0x1d;
+            printf("Done!\n");
+        }
+    }
+    
 	fwrite(header, sizeof(char), HLEN, fd);
 	fwrite(text, sizeof(char), ex.text, fd);
 	fwrite(pad, sizeof(char), pd, fd);
