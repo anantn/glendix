@@ -812,7 +812,7 @@ asmlinkage int sys_vfork(struct pt_regs regs)
  * sys_plan9() calls an appropriate 9syscall
  */
 asmlinkage long sys_plan9(struct pt_regs regs)
-{   
+{       
     char* names[52] = {
         "sysr1", "_errstr", "bind", "chdir", "close",
         "dup", "alarm", "exec", "exits", "_fsession",
@@ -967,7 +967,13 @@ asmlinkage long sys_plan9(struct pt_regs regs)
         case 41: /* errstr */
             goto out;
         case 42: /* stat */
-            goto out;
+            arg1 = *(++addr);
+            arg2 = *(++addr);
+            arg3 = *(++addr);
+            
+            retval = sys_plan9_stat((char __user *)arg1, (void __user *)arg2, (unsigned int)arg3);
+            printk(KERN_ALERT "%lx (%lx, %lx, %lx)\n", retval, arg1, arg2, arg3);
+            break;
         case 43: /* fstat */
             goto out;
         case 44: /* wstat */

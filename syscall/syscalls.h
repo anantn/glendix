@@ -613,7 +613,7 @@ asmlinkage long sys_eventfd(unsigned int count);
 asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len);
 
 asmlinkage long sys_fd2path(int fd, char __user* buf, unsigned long len);
-
+asmlinkage long sys_plan9_stat(char __user* path, void __user* buf, unsigned int len);
 int kernel_execve(const char *filename, char *const argv[], char *const envp[]);
 
 #endif
