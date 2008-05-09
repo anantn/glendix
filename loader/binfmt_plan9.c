@@ -60,7 +60,7 @@ static unsigned long __user *create_args(char __user * p, struct linux_binprm * 
 	
 	/* leave space for TOS: 56 / 4 = 14 */
     sp -= 14;
-    regs->eax = sp;
+    regs->ebx = (unsigned long)sp;
     
 	sp -= argc+1;
 	argv = (char __user * __user *) sp;
@@ -175,12 +175,12 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
     
     current->mm->start_stack = 
         (unsigned long) create_args((char __user *) bprm->p, bprm, regs);
-	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->eax);
+	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->ebx);
 	
     print_mems();
     
 	start_thread(regs, ex.entry, current->mm->start_stack);
-	printk(KERN_ALERT "9load: Program started: EAX: %lx, EIP: %lx\n", regs->eax, regs->eip);
+	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->ebx, regs->eip);
 	
 	if (unlikely(current->ptrace & PT_PTRACED)) {
 		if (current->ptrace & PT_TRACE_EXEC)
