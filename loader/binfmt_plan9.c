@@ -156,31 +156,16 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 			MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
 	up_write(&current->mm->mmap_sem);
 	
-	print_mems();
-	
 	/* copy data in */
 	down_write(&current->mm->mmap_sem);
 	error = do_mmap(NULL, 0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE, 0);
 	up_write(&current->mm->mmap_sem);
 	
-	print_mems();
 	pos = ex.text + 0x20;
-	if (!bprm->file) {
-		printk("BLA");
-		return -EINVAL;
-	}
-	if (!bprm->file->f_op->read) {
-		printk("BLO");
-		return -EINVAL;
-	}
 	bprm->file->f_op->read(bprm->file, (char *)0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss, &pos);
 	
-	print_mems();
-	
 	set_binfmt(&plan9_format);
-	
 	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
-    
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);
 		return retval;
@@ -197,12 +182,6 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	start_thread(regs, ex.entry, current->mm->start_stack);
 	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->bx, regs->ip);
 	
-	if (unlikely(current->ptrace & PT_PTRACED)) {
-		//if (current->ptrace & PT_TRACE_EXEC)
-			//ptrace_notify ((PTRACE_EVENT_EXEC << 8) | SIGTRAP);
-		//else
-			//send_sig(SIGTRAP, current, 0);
-	}
 	return 0;
 }
 
