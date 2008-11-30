@@ -60,7 +60,7 @@ static unsigned long __user *create_args(char __user * p, struct linux_binprm * 
 	
 	/* leave space for TOS: 56 / 4 = 14 */
     sp -= 14;
-    regs->ebx = (unsigned long)sp;
+    regs->bx = (unsigned long)sp;
     
 	sp -= argc+1;
 	argv = (char __user * __user *) sp;
@@ -84,7 +84,8 @@ static unsigned long __user *create_args(char __user * p, struct linux_binprm * 
 static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 {
 	struct plan9_exec ex;
-	unsigned long rlim, retval, fpos = 0, tot = 0;
+	unsigned long rlim, retval, error, fpos = 0, tot = 0;
+	loff_t pos;
 	
 	/* Load header and fix big-endianess: we are concerned with x86 only */
 	ex       = *((struct plan9_exec *) bprm->buf);
@@ -155,12 +156,26 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 			MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
 	up_write(&current->mm->mmap_sem);
 	
-	/* mmap data in */
+	print_mems();
+	
+	/* copy data in */
 	down_write(&current->mm->mmap_sem);
-	fpos = do_mmap(bprm->file, 0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss,
-			PROT_READ | PROT_WRITE,
-			MAP_FIXED | MAP_PRIVATE, PAGE_ALIGN(ex.text + 0x20));
+	error = do_mmap(NULL, 0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE, 0);
 	up_write(&current->mm->mmap_sem);
+	
+	print_mems();
+	pos = ex.text + 0x20;
+	if (!bprm->file) {
+		printk("BLA");
+		return -EINVAL;
+	}
+	if (!bprm->file->f_op->read) {
+		printk("BLO");
+		return -EINVAL;
+	}
+	bprm->file->f_op->read(bprm->file, (char *)0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss, &pos);
+	
+	print_mems();
 	
 	set_binfmt(&plan9_format);
 	
@@ -175,18 +190,18 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
     
     current->mm->start_stack = 
         (unsigned long) create_args((char __user *) bprm->p, bprm, regs);
-	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->ebx);
+	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->bx);
 	
     print_mems();
     
 	start_thread(regs, ex.entry, current->mm->start_stack);
-	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->ebx, regs->eip);
+	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->bx, regs->ip);
 	
 	if (unlikely(current->ptrace & PT_PTRACED)) {
-		if (current->ptrace & PT_TRACE_EXEC)
-			ptrace_notify ((PTRACE_EVENT_EXEC << 8) | SIGTRAP);
-		else
-			send_sig(SIGTRAP, current, 0);
+		//if (current->ptrace & PT_TRACE_EXEC)
+			//ptrace_notify ((PTRACE_EVENT_EXEC << 8) | SIGTRAP);
+		//else
+			//send_sig(SIGTRAP, current, 0);
 	}
 	return 0;
 }
