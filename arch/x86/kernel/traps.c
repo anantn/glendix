@@ -76,6 +76,9 @@ DECLARE_BITMAP(used_vectors, NR_VECTORS);
 EXPORT_SYMBOL_GPL(used_vectors);
 
 asmlinkage int system_call(void);
+#ifdef CONFIG_BINFMT_PLAN9
+asmlinkage int plan9_system_call(void);
+#endif
 
 /* Do we ignore FPU interrupts ? */
 char ignore_fpu_irq;
