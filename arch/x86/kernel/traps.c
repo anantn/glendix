@@ -1008,7 +1008,12 @@ void __init trap_init(void)
 	}
 
 	set_system_trap_gate(SYSCALL_VECTOR, &system_call);
-
+	
+	#ifdef CONFIG_PLAN9
+	set_system_trap_gate(PLAN9_SYSCALL_VECTOR, &plan9_system_call);
+	set_bit(PLAN9_SYSCALL_VECTOR, used_vectors);
+	#endif
+	
 	/* Reserve all the builtin and the syscall vector: */
 	for (i = 0; i < FIRST_EXTERNAL_VECTOR; i++)
 		set_bit(i, used_vectors);
