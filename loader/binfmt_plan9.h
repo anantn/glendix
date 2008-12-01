@@ -33,3 +33,9 @@ struct plan9_exec {
 #define	U_MAGIC		_MAGIC(0, 25)	/* sparc64 */
 #define	S_MAGIC		_MAGIC(HDR_MAGIC, 26)	/* amd64 */
 #define	T_MAGIC		_MAGIC(HDR_MAGIC, 27)	/* powerpc64 */
+
+#define TOS_SIZE	14		/* Size of Top of Stack: 56 / 4 */
+#define HDR_SIZE	0x20
+#define STR_ADDR	0x1000				/* Start Address */
+#define TXT_ADDR	HDR_SIZE + ex.text		/* TEXT Address */
+#define DAT_ADDR	STR_ADDR + PAGE_ALIGN(TXT_ADDR)	/* DATA&BSS Address */

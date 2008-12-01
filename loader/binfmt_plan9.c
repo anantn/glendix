@@ -22,9 +22,6 @@
 #include "binfmt_plan9.h"
 
 static int load_plan9_binary(struct linux_binprm *, struct pt_regs *);
-static unsigned long endian_swap(unsigned long);
-//static int load_plan9_library(struct file*);
-//static int plan9_core_dump(long signr, struct pt_regs * regs, struct file *file);
 
 static struct linux_binfmt plan9_format = {
 	.module = THIS_MODULE,
@@ -55,8 +52,8 @@ static unsigned long __user *create_args(char __user * p,
 	sp = (void __user *)
 		((-(unsigned long)sizeof(char *)) & (unsigned long)p);
 
-	/* leave space for TOS: 56 / 4 = 14 */
-	sp -= 14;
+	/* leave space for TOS */
+	sp -= TOS_SIZE;
 	regs->bx = (unsigned long)sp;
 
 	sp -= argc + 1;
@@ -125,8 +122,8 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	set_personality(PER_LINUX);
 
 	/* Set code sections */
-	current->mm->end_code = ex.text + 0x20 +
-	    (current->mm->start_code = 0x1000);
+	current->mm->end_code = TXT_ADDR +
+	    (current->mm->start_code = STR_ADDR);
 	current->mm->end_data = ex.data +
 	    (current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
 	current->mm->brk = ex.bss +
@@ -147,7 +144,7 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 
 	/* mmap text in */
 	down_write(&current->mm->mmap_sem);
-	fpos = do_mmap(bprm->file, 0x1000, ex.text + 0x20,
+	fpos = do_mmap(bprm->file, STR_ADDR, TXT_ADDR,
 		       PROT_READ | PROT_EXEC,
 		       MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
 	up_write(&current->mm->mmap_sem);
@@ -155,13 +152,13 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	/* copy data in */
 	down_write(&current->mm->mmap_sem);
 	error =
-	    do_mmap(NULL, 0x1000 + PAGE_ALIGN(ex.text + 0x20), ex.data + ex.bss,
+	    do_mmap(NULL, DAT_ADDR, ex.data + ex.bss,
 		    PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE, 0);
 	up_write(&current->mm->mmap_sem);
 
-	pos = ex.text + 0x20;
+	pos = TXT_ADDR;
 	bprm->file->f_op->read(bprm->file,
-			       (char *)0x1000 + PAGE_ALIGN(ex.text + 0x20),
+			       (char *)DAT_ADDR,
 			       ex.data + ex.bss, &pos);
 
 	set_binfmt(&plan9_format);
