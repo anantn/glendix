@@ -41,6 +41,25 @@ void print_mems(void)
 	}
 }
 
+static void mangle_tos(unsigned long entry)
+{
+	unsigned long __user *addr;
+	unsigned char a, b, c, d, e;
+	
+	addr = (void __user *)
+		((-(unsigned long)sizeof(char *)) & entry);
+	get_user(a, addr);
+	get_user(b, addr + 1);
+	get_user(c, addr + 2);
+	get_user(d, addr + 3);
+	get_user(e, addr + 4);
+	
+	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
+		printk(KERN_ALERT "9load: Mangling TOS!\n");
+		put_user(0x1D, addr + 4);
+	}
+}
+
 static unsigned long __user *create_args(char __user * p,
 					 struct linux_binprm *bprm,
 					 struct pt_regs *regs)
@@ -175,6 +194,7 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n",
 	       current->mm->start_stack, regs->bx);
 
+	mangle_tos(ex.entry);
 	print_mems();
 
 	start_thread(regs, ex.entry, current->mm->start_stack);
