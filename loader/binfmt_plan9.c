@@ -17,6 +17,7 @@
 #include <asm/page.h>
 #include <asm/uaccess.h>
 #include <asm/processor.h>
+#include <asm/byteorder.h>
 
 #include "binfmt_plan9.h"
 
@@ -31,12 +32,6 @@ static struct linux_binfmt plan9_format = {
 	.load_shlib = NULL,
 	.core_dump = NULL
 };
-
-static unsigned long endian_swap(unsigned long x)
-{
-	return (x >> 24) |
-	    ((x << 8) & 0x00FF0000) | ((x >> 8) & 0x0000FF00) | (x << 24);
-}
 
 void print_mems(void)
 {
@@ -90,24 +85,25 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	unsigned long rlim, retval, error, fpos = 0, tot = 0;
 	loff_t pos;
 
-	/* Load header and fix big-endianess: concerned with x86 only */
+	/* Load header and fix big-endianess */
 	ex = *((struct plan9_exec *)bprm->buf);
-	ex.magic = endian_swap(ex.magic);
-	ex.text = endian_swap(ex.text);
-	ex.data = endian_swap(ex.data);
-	ex.bss = endian_swap(ex.bss);
-	ex.syms = endian_swap(ex.syms);
-	ex.entry = endian_swap(ex.entry);
-	ex.spsz = endian_swap(ex.spsz);
-	ex.pcsz = endian_swap(ex.pcsz);
+	ex.magic = be32_to_cpu((__u32)ex.magic);
+	ex.text = be32_to_cpu((__u32)ex.text);
+	ex.data = be32_to_cpu((__u32)ex.data);
+	ex.bss = be32_to_cpu((__u32)ex.bss);
+	ex.syms = be32_to_cpu((__u32)ex.syms);
+	ex.entry = be32_to_cpu((__u32)ex.entry);
+	ex.spsz = be32_to_cpu((__u32)ex.spsz);
+	ex.pcsz = be32_to_cpu((__u32)ex.pcsz);
 
 	tot = 0x20 + ex.text + ex.data + ex.syms + ex.spsz + ex.pcsz;
 
 	/* Check if this is really a plan 9 executable */
 	if (ex.magic != I_MAGIC)
 		return -ENOEXEC;
-	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx\n", ex.magic, ex.text,
-	       ex.data, ex.bss, ex.syms, ex.entry);
+	
+	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx\n",
+		ex.magic, ex.text, ex.data, ex.bss, ex.syms, ex.entry);
 
 	/* Check initial limits. This avoids letting people circumvent
 	 * size limits imposed on them by creating programs with large
@@ -139,8 +135,6 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	current->mm->free_area_cache = 0;
 	current->mm->cached_hole_size = 0;
 
-	//current->mm->mmap = NULL;
-	//compute_creds(bprm);
 	current->flags &= ~PF_FORKNOEXEC;
 
 	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx %lx %lx\n",
