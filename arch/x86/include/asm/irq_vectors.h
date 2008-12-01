@@ -13,7 +13,9 @@
 
 #ifdef CONFIG_X86_32
 # define SYSCALL_VECTOR		0x80
+#ifdef CONFIG_BINFMT_PLAN9
 # define PLAN9_SYSCALL_VECTOR	0x64
+#endif
 #else
 # define IA32_SYSCALL_VECTOR	0x80
 #endif

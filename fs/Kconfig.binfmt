@@ -81,6 +81,11 @@ config BINFMT_SHARED_FLAT
 	help
 	  Support FLAT shared libraries
 
+config BINFMT_PLAN9
+	bool "Enable Plan 9 binary compatibility layer"
+	help
+	  Support binaries from the Plan 9 operating system.
+
 config HAVE_AOUT
        def_bool n
 
