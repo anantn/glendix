@@ -1,0 +1,260 @@
+--- /dev/null	2008-12-02 23:02:30.567009889 +0530
++++ fs/binfmt_plan9.h	2008-12-02 17:23:15.000000000 +0530
+@@ -0,0 +1,42 @@
++/*
++ * Binary loader for Plan 9's a.out executable format
++ * 
++ * Copyright (C) 2008 Anant Narayanan
++ */
++struct plan9_exec {
++	unsigned long magic;	/* magic number */
++	unsigned long text;	/* size of text segment */
++	unsigned long data;	/* size of initialized data */
++	unsigned long bss;	/* size of uninitialized data */
++	unsigned long syms;	/* size of symbol table */
++	unsigned long entry;	/* entry point */
++	unsigned long spsz;	/* size of pc/sp offset table */
++	unsigned long pcsz;	/* size of pc/line number table */
++};
++
++#define HDR_MAGIC	0x00008000	/* header expansion */
++
++#define	_MAGIC(f, b)	((f)|((((4*(b))+0)*(b))+7))
++#define	A_MAGIC		_MAGIC(0, 8)	/* 68020 */
++#define	I_MAGIC		_MAGIC(0, 11)	/* intel 386 */
++#define	J_MAGIC		_MAGIC(0, 12)	/* intel 960 (retired) */
++#define	K_MAGIC		_MAGIC(0, 13)	/* sparc */
++#define	V_MAGIC		_MAGIC(0, 16)	/* mips 3000 BE */
++#define	X_MAGIC		_MAGIC(0, 17)	/* att dsp 3210 (retired) */
++#define	M_MAGIC		_MAGIC(0, 18)	/* mips 4000 BE */
++#define	D_MAGIC		_MAGIC(0, 19)	/* amd 29000 (retired) */
++#define	E_MAGIC		_MAGIC(0, 20)	/* arm */
++#define	Q_MAGIC		_MAGIC(0, 21)	/* powerpc */
++#define	N_MAGIC		_MAGIC(0, 22)	/* mips 4000 LE */
++#define	L_MAGIC		_MAGIC(0, 23)	/* dec alpha */
++#define	P_MAGIC		_MAGIC(0, 24)	/* mips 3000 LE */
++#define	U_MAGIC		_MAGIC(0, 25)	/* sparc64 */
++#define	S_MAGIC		_MAGIC(HDR_MAGIC, 26)	/* amd64 */
++#define	T_MAGIC		_MAGIC(HDR_MAGIC, 27)	/* powerpc64 */
++
++#define TOS_SIZE	14	/* Size of Top of Stack: 56 / 4 */
++#define HDR_SIZE	0x20
++#define STR_ADDR	0x1000	/* Start Address */
++#define TXT_ADDR	HDR_SIZE + ex.text	/* TEXT Address */
++#define DAT_ADDR	STR_ADDR + PAGE_ALIGN(TXT_ADDR)	/* DATA&BSS Address */
++
+--- /dev/null	2008-12-02 23:02:30.567009889 +0530
++++ fs/binfmt_plan9.c	2008-12-02 17:22:41.000000000 +0530
+@@ -0,0 +1,188 @@
++/*
++ * Binary loader for Plan 9's a.out executable format
++ * 
++ * Copyright (C) 2008 Anant Narayanan <anant@kix.in>
++ */
++
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/ptrace.h>
++#include <linux/binfmts.h>
++#include <linux/mm.h>
++#include <linux/fs.h>
++#include <linux/mman.h>
++#include <linux/personality.h>
++
++#include <asm/page.h>
++#include <asm/uaccess.h>
++#include <asm/processor.h>
++#include <asm/byteorder.h>
++
++#include "binfmt_plan9.h"
++
++static int load_plan9_binary(struct linux_binprm *, struct pt_regs *);
++
++static struct linux_binfmt plan9_format = {
++	.module = THIS_MODULE,
++	.load_binary = load_plan9_binary,
++	.load_shlib = NULL,
++	.core_dump = NULL
++};
++
++static void mangle_tos(unsigned long entry)
++{
++	unsigned char a, b, c, d, e;
++
++	get_user(a, (char __user *)entry);
++	get_user(b, (char __user *)entry + 1);
++	get_user(c, (char __user *)entry + 2);
++	get_user(d, (char __user *)entry + 3);
++	get_user(e, (char __user *)entry + 4);
++	printk(KERN_ALERT "9load: MTIKI %x %x %x %x %x\n", a, b, c, d, e);
++	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
++		put_user(0x1D, (char __user *)entry + 4);
++	}
++}
++
++static unsigned long __user *create_args(char __user * p,
++					 struct linux_binprm *bprm,
++					 struct pt_regs *regs)
++{
++	char __user *__user * argv;
++	unsigned long __user *sp;
++	int argc = bprm->argc;
++
++	sp = (void __user *)
++	    ((-(unsigned long)sizeof(char *)) & (unsigned long)p);
++
++	/* leave space for TOS */
++	sp -= TOS_SIZE;
++	regs->bx = (unsigned long)sp;
++
++	sp -= argc + 1;
++	argv = (char __user * __user *)sp;
++
++	put_user(argc, --sp);
++
++	current->mm->arg_start = (unsigned long)p;
++	while (argc-- > 0) {
++		char c;
++		put_user(p, argv++);
++		do {
++			get_user(c, p++);
++		} while (c);
++	}
++	put_user(NULL, argv);
++	current->mm->arg_end = current->mm->env_start = current->mm->env_end =
++	    (unsigned long)p;
++
++	return sp;
++}
++
++static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
++{
++	struct plan9_exec ex;
++	unsigned long rlim, retval, error, fpos = 0, tot = 0;
++	loff_t pos;
++
++	/* Load header and fix big-endianess */
++	ex = *((struct plan9_exec *)bprm->buf);
++	ex.magic = be32_to_cpu((__u32) ex.magic);
++	ex.text = be32_to_cpu((__u32) ex.text);
++	ex.data = be32_to_cpu((__u32) ex.data);
++	ex.bss = be32_to_cpu((__u32) ex.bss);
++	ex.syms = be32_to_cpu((__u32) ex.syms);
++	ex.entry = be32_to_cpu((__u32) ex.entry);
++	ex.spsz = be32_to_cpu((__u32) ex.spsz);
++	ex.pcsz = be32_to_cpu((__u32) ex.pcsz);
++
++	tot = 0x20 + ex.text + ex.data + ex.syms + ex.spsz + ex.pcsz;
++
++	/* Check if this is really a plan 9 executable */
++	if (ex.magic != I_MAGIC)
++		return -ENOEXEC;
++
++	/* Check initial limits. This avoids letting people circumvent
++	 * size limits imposed on them by creating programs with large
++	 * arrays in the data or bss.
++	 */
++	rlim = current->signal->rlim[RLIMIT_DATA].rlim_cur;
++	if (rlim >= RLIM_INFINITY)
++		rlim = ~0;
++	if (ex.data + ex.bss > rlim)
++		return -ENOMEM;
++
++	/* Flush all traces of the currently running executable */
++	retval = flush_old_exec(bprm);
++	if (retval) {
++		return retval;
++	}
++	/* Point of no return */
++	set_personality(PER_LINUX);
++
++	/* Set code sections */
++	current->mm->end_code = TXT_ADDR + (current->mm->start_code = STR_ADDR);
++	current->mm->end_data = ex.data +
++	    (current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
++	current->mm->brk = ex.bss +
++	    (current->mm->start_brk = current->mm->end_data);
++	current->mm->mmap_base = 0;
++	current->mm->free_area_cache = 0;
++	current->mm->cached_hole_size = 0;
++
++	current->flags &= ~PF_FORKNOEXEC;
++
++	/* mmap text in */
++	down_write(&current->mm->mmap_sem);
++	fpos = do_mmap(bprm->file, STR_ADDR, TXT_ADDR,
++		       PROT_READ | PROT_EXEC,
++		       MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
++	up_write(&current->mm->mmap_sem);
++
++	/* copy data in */
++	down_write(&current->mm->mmap_sem);
++	error =
++	    do_mmap(NULL, DAT_ADDR, ex.data + ex.bss,
++		    PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE, 0);
++	up_write(&current->mm->mmap_sem);
++
++	pos = TXT_ADDR;
++	bprm->file->f_op->read(bprm->file,
++			       (char *)DAT_ADDR, ex.data + ex.bss, &pos);
++
++	/* setup env and arguments on stack */
++	set_binfmt(&plan9_format);
++	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
++	if (retval < 0) {
++		send_sig(SIGKILL, current, 0);
++		return retval;
++	}
++
++	current->mm->start_stack =
++	    (unsigned long)create_args((char __user *)bprm->p, bprm, regs);
++
++	mangle_tos(ex.entry);
++	start_thread(regs, ex.entry, current->mm->start_stack);
++	printk(KERN_INFO "9load: Program started: EBX: %lx, EIP: %lx\n",
++	       regs->bx, regs->ip);
++
++	return 0;
++}
++
++static int __init plan9_aout_init(void)
++{
++	return register_binfmt(&plan9_format);
++}
++
++static void __exit plan9_aout_exit(void)
++{
++	unregister_binfmt(&plan9_format);
++}
++
++core_initcall(plan9_aout_init);
++module_exit(plan9_aout_exit);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Anant Narayanan <anant@kix.in>");
++MODULE_DESCRIPTION("Binary loader for Plan9's a.out executable format");
+--- /usr/src/linux-2.6.28-rc6/fs/Makefile	2008-12-01 20:07:02.000000000 +0530
++++ fs/Makefile	2008-12-02 16:47:48.000000000 +0530
+@@ -37,6 +37,7 @@
+ obj-$(CONFIG_BINFMT_AOUT)	+= binfmt_aout.o
+ obj-$(CONFIG_BINFMT_EM86)	+= binfmt_em86.o
+ obj-$(CONFIG_BINFMT_MISC)	+= binfmt_misc.o
++obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9.o binfmt_plan9_syscalls.o
+ 
+ # binfmt_script is always there
+ obj-y				+= binfmt_script.o
+--- /usr/src/linux-2.6.28-rc6/fs/Kconfig.binfmt	2008-12-01 20:07:02.000000000 +0530
++++ fs/Kconfig.binfmt	2008-12-02 16:44:50.000000000 +0530
+@@ -81,6 +81,11 @@
+ 	help
+ 	  Support FLAT shared libraries
+ 
++config BINFMT_PLAN9
++	bool "Enable Plan 9 binary compatibility layer"
++	help
++	  Support binaries from the Plan 9 operating system.
++
+ config HAVE_AOUT
+        def_bool n
+ 
