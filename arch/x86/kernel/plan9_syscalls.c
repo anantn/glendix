@@ -59,7 +59,7 @@ asmlinkage long sys_plan9_exec(struct pt_regs regs)
 
 asmlinkage long sys_plan9_exits(struct pt_regs regs)
 {
-	unimplemented(regs.ax); return 0;
+	return sys_exit(1);
 }
 
 asmlinkage long sys_plan9_fauth(struct pt_regs regs)
