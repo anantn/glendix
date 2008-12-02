@@ -105,8 +105,6 @@ microcode-$(CONFIG_MICROCODE_INTEL)	+= microcode_intel.o
 microcode-$(CONFIG_MICROCODE_AMD)	+= microcode_amd.o
 obj-$(CONFIG_MICROCODE)			+= microcode.o
 
-obj-$(CONFIG_BINFMT_PLAN9)	+= plan9_syscalls.o
-
 ###
 # 64 bit specific files
 ifeq ($(CONFIG_X86_64),y)
