@@ -412,25 +412,21 @@ sysexit_audit:
 .popsection
 ENDPROC(ia32_sysenter_target)
 
-	# system call handler stub
-
 #ifdef CONFIG_BINFMT_PLAN9
 ENTRY(plan9_system_call)
-	#ifndef CURRENT_SYSCALL_TABLE
-	# define CURRENT_SYSCALL_TABLE *plan9_syscall_table
-	#endif
-	jmp syscall_start
+	RING0_INT_FRAME			# can't unwind into user space anyway
+	pushl %eax			# save orig_eax
+	CFI_ADJUST_CFA_OFFSET 4
+	SAVE_ALL
+	call *plan9_syscall_table(,%eax,4)
+	movl %eax,PT_EAX(%esp)		# store the return value
+	jmp syscall_exit
+	CFI_ENDPROC
 ENDPROC(plan9_system_call)
 #endif
 
+	# system call handler stub
 ENTRY(system_call)
-	#ifndef CURRENT_SYSCALL_TABLE
-	# define CURRENT_SYSCALL_TABLE *sys_call_table
-	#endif
-	jmp syscall_start
-ENDPROC(system_call)
-
-syscall_start:
 	RING0_INT_FRAME			# can't unwind into user space anyway
 	pushl %eax			# save orig_eax
 	CFI_ADJUST_CFA_OFFSET 4
@@ -443,10 +439,9 @@ syscall_start:
 	cmpl $(nr_syscalls), %eax
 	jae syscall_badsys
 syscall_call:
-	call CURRENT_SYSCALL_TABLE(,%eax,4)
+	call *sys_call_table(,%eax,4)
 	movl %eax,PT_EAX(%esp)		# store the return value
 syscall_exit:
-	#undef CURRENT_SYSCALL_TABLE
 	LOCKDEP_SYS_EXIT
 	DISABLE_INTERRUPTS(CLBR_ANY)	# make sure we don't miss an interrupt
 					# setting need_resched or sigpending
@@ -525,7 +520,7 @@ ldt_ss:
 	CFI_ADJUST_CFA_OFFSET -8
 	jmp restore_nocheck
 	CFI_ENDPROC
-END(ldt_ss)
+ENDPROC(system_call)
 
 	# perform work that needs to be done immediately before resumption
 	ALIGN
@@ -1229,7 +1224,6 @@ END(mcount)
 #ifdef CONFIG_BINFMT_PLAN9
 # include "plan9_syscall_table.S"
 #endif
-
 #include "syscall_table_32.S"
 
 syscall_table_size=(.-sys_call_table)
