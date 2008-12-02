@@ -43,20 +43,17 @@ void print_mems(void)
 
 static void mangle_tos(unsigned long entry)
 {
-	unsigned long __user *addr;
 	unsigned char a, b, c, d, e;
 	
-	addr = (void __user *)
-		((-(unsigned long)sizeof(char *)) & entry);
-	get_user(a, addr);
-	get_user(b, addr + 1);
-	get_user(c, addr + 2);
-	get_user(d, addr + 3);
-	get_user(e, addr + 4);
-	
+	get_user(a, (char __user *)entry);
+	get_user(b, (char __user *)entry + 1);
+	get_user(c, (char __user *)entry + 2);
+	get_user(d, (char __user *)entry + 3);
+	get_user(e, (char __user *)entry + 4);
+	printk(KERN_ALERT "9load: MTIKI %x %x %x %x %x\n", a, b, c, d, e);
 	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
 		printk(KERN_ALERT "9load: Mangling TOS!\n");
-		put_user(0x1D, addr + 4);
+		put_user(0x1D, (char __user *)entry + 4);
 	}
 }
 
@@ -180,6 +177,7 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 			       (char *)DAT_ADDR,
 			       ex.data + ex.bss, &pos);
 
+	/* setup env and arguments on stack */
 	set_binfmt(&plan9_format);
 	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
 	if (retval < 0) {
@@ -187,13 +185,12 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 		return retval;
 	}
 
-	printk(KERN_ALERT "9load: BPRM Value: %lx\n", bprm->p);
-
 	current->mm->start_stack =
 	    (unsigned long)create_args((char __user *)bprm->p, bprm, regs);
 	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n",
 	       current->mm->start_stack, regs->bx);
 
+	/* _tos to be mangled */
 	mangle_tos(ex.entry);
 	print_mems();
 
