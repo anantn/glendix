@@ -1,7 +1,7 @@
 /*
  * Binary loader for Plan 9's a.out executable format
  * 
- * Copyright (C) 2008 Anant Narayanan
+ * Copyright (C) 2008 Anant Narayanan <anant@kix.in>
  */
 
 #include <linux/init.h>
@@ -30,21 +30,10 @@ static struct linux_binfmt plan9_format = {
 	.core_dump = NULL
 };
 
-void print_mems(void)
-{
-	int i = 1;
-	struct vm_area_struct *blah = current->mm->mmap;
-	while (blah != NULL) {
-		printk(KERN_ALERT "9load: Range %d: %lx to %lx\n", i++,
-		       blah->vm_start, blah->vm_end);
-		blah = blah->vm_next;
-	}
-}
-
 static void mangle_tos(unsigned long entry)
 {
 	unsigned char a, b, c, d, e;
-	
+
 	get_user(a, (char __user *)entry);
 	get_user(b, (char __user *)entry + 1);
 	get_user(c, (char __user *)entry + 2);
@@ -52,7 +41,6 @@ static void mangle_tos(unsigned long entry)
 	get_user(e, (char __user *)entry + 4);
 	printk(KERN_ALERT "9load: MTIKI %x %x %x %x %x\n", a, b, c, d, e);
 	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
-		printk(KERN_ALERT "9load: Mangling TOS!\n");
 		put_user(0x1D, (char __user *)entry + 4);
 	}
 }
@@ -66,7 +54,7 @@ static unsigned long __user *create_args(char __user * p,
 	int argc = bprm->argc;
 
 	sp = (void __user *)
-		((-(unsigned long)sizeof(char *)) & (unsigned long)p);
+	    ((-(unsigned long)sizeof(char *)) & (unsigned long)p);
 
 	/* leave space for TOS */
 	sp -= TOS_SIZE;
@@ -87,7 +75,7 @@ static unsigned long __user *create_args(char __user * p,
 	}
 	put_user(NULL, argv);
 	current->mm->arg_end = current->mm->env_start = current->mm->env_end =
-		(unsigned long)p;
+	    (unsigned long)p;
 
 	return sp;
 }
@@ -100,23 +88,20 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 
 	/* Load header and fix big-endianess */
 	ex = *((struct plan9_exec *)bprm->buf);
-	ex.magic = be32_to_cpu((__u32)ex.magic);
-	ex.text = be32_to_cpu((__u32)ex.text);
-	ex.data = be32_to_cpu((__u32)ex.data);
-	ex.bss = be32_to_cpu((__u32)ex.bss);
-	ex.syms = be32_to_cpu((__u32)ex.syms);
-	ex.entry = be32_to_cpu((__u32)ex.entry);
-	ex.spsz = be32_to_cpu((__u32)ex.spsz);
-	ex.pcsz = be32_to_cpu((__u32)ex.pcsz);
+	ex.magic = be32_to_cpu((__u32) ex.magic);
+	ex.text = be32_to_cpu((__u32) ex.text);
+	ex.data = be32_to_cpu((__u32) ex.data);
+	ex.bss = be32_to_cpu((__u32) ex.bss);
+	ex.syms = be32_to_cpu((__u32) ex.syms);
+	ex.entry = be32_to_cpu((__u32) ex.entry);
+	ex.spsz = be32_to_cpu((__u32) ex.spsz);
+	ex.pcsz = be32_to_cpu((__u32) ex.pcsz);
 
 	tot = 0x20 + ex.text + ex.data + ex.syms + ex.spsz + ex.pcsz;
 
 	/* Check if this is really a plan 9 executable */
 	if (ex.magic != I_MAGIC)
 		return -ENOEXEC;
-	
-	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx\n",
-		ex.magic, ex.text, ex.data, ex.bss, ex.syms, ex.entry);
 
 	/* Check initial limits. This avoids letting people circumvent
 	 * size limits imposed on them by creating programs with large
@@ -131,15 +116,13 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	/* Flush all traces of the currently running executable */
 	retval = flush_old_exec(bprm);
 	if (retval) {
-		printk(KERN_ALERT "9load: flush failed! %lx\n", retval);
 		return retval;
 	}
 	/* Point of no return */
 	set_personality(PER_LINUX);
 
 	/* Set code sections */
-	current->mm->end_code = TXT_ADDR +
-	    (current->mm->start_code = STR_ADDR);
+	current->mm->end_code = TXT_ADDR + (current->mm->start_code = STR_ADDR);
 	current->mm->end_data = ex.data +
 	    (current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
 	current->mm->brk = ex.bss +
@@ -149,14 +132,6 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	current->mm->cached_hole_size = 0;
 
 	current->flags &= ~PF_FORKNOEXEC;
-
-	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx %lx %lx\n",
-	       current->mm->start_code,
-	       current->mm->end_code,
-	       current->mm->start_data,
-	       current->mm->end_data,
-	       current->mm->start_brk,
-	       current->mm->brk, current->mm->mmap_base, tot);
 
 	/* mmap text in */
 	down_write(&current->mm->mmap_sem);
@@ -174,8 +149,7 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 
 	pos = TXT_ADDR;
 	bprm->file->f_op->read(bprm->file,
-			       (char *)DAT_ADDR,
-			       ex.data + ex.bss, &pos);
+			       (char *)DAT_ADDR, ex.data + ex.bss, &pos);
 
 	/* setup env and arguments on stack */
 	set_binfmt(&plan9_format);
@@ -187,34 +161,27 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 
 	current->mm->start_stack =
 	    (unsigned long)create_args((char __user *)bprm->p, bprm, regs);
-	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n",
-	       current->mm->start_stack, regs->bx);
 
-	/* _tos to be mangled */
 	mangle_tos(ex.entry);
-	print_mems();
-
 	start_thread(regs, ex.entry, current->mm->start_stack);
-	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n",
+	printk(KERN_INFO "9load: Program started: EBX: %lx, EIP: %lx\n",
 	       regs->bx, regs->ip);
 
 	return 0;
 }
 
-static int __init plan9_init(void)
+static int __init plan9_aout_init(void)
 {
-	printk(KERN_ALERT "Hello, Plan9!\n");
 	return register_binfmt(&plan9_format);
 }
 
-static void __exit plan9_exit(void)
+static void __exit plan9_aout_exit(void)
 {
 	unregister_binfmt(&plan9_format);
-	printk(KERN_ALERT "Goodbye, Plan9!\n");
 }
 
-module_init(plan9_init);
-module_exit(plan9_exit);
+core_initcall(plan9_aout_init);
+module_exit(plan9_aout_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Anant Narayanan <anant@kix.in>");
