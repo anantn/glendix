@@ -1,0 +1,396 @@
+--- /dev/null	2008-12-02 23:02:30.567009889 +0530
++++ fs/binfmt_plan9_syscalls.c	2008-12-02 17:23:44.000000000 +0530
+@@ -0,0 +1,265 @@
++/*
++ * Copyright (C) 2008 Anant Narayanan <anant@kix.in>
++ * Plan 9 system call implementations
++ */
++
++#ifdef CONFIG_BINFMT_PLAN9
++
++#include <linux/fs.h>
++#include <linux/syscalls.h>
++
++#include <asm/uaccess.h>
++#include <asm/processor.h>
++
++static void unimplemented(int num)
++{
++	printk(KERN_ALERT "P9: %d called, but unimplemented!\n", num);
++}
++
++asmlinkage long sys_plan9_deprecated(struct pt_regs regs)
++{
++	printk(KERN_ALERT "P9: syscall number %ld DEPRECATED!\n", regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_sysr(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_bind(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_chdir(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_close(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_dup(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_alarm(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_exec(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_exits(struct pt_regs regs)
++{
++	return sys_exit(1);
++}
++
++asmlinkage long sys_plan9_fauth(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_segbrk(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_open(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_oseek(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_sleep(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_rfork(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_pipe(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_create(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_brk(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_remove(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_notify(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_noted(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_segattach(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_segdetach(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_segfree(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_segflush(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_rendezvous(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_unmount(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_semacquire(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_semrelease(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_seek(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_fversion(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_errstr(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_stat(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_fstat(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_wstat(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_fwstat(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_mount(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_await(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_pread(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_pwrite(struct pt_regs regs)
++{
++	unimplemented(regs.ax);
++	return 0;
++}
++
++#endif
++
+--- /usr/src/linux-2.6.28-rc6/arch/x86/kernel/entry_32.S	2008-12-01 20:06:11.000000000 +0530
++++ arch/x86/kernel/entry_32.S	2008-12-02 16:44:50.000000000 +0530
+@@ -412,6 +412,19 @@
+ .popsection
+ ENDPROC(ia32_sysenter_target)
+ 
++#ifdef CONFIG_BINFMT_PLAN9
++ENTRY(plan9_system_call)
++	RING0_INT_FRAME			# can't unwind into user space anyway
++	pushl %eax			# save orig_eax
++	CFI_ADJUST_CFA_OFFSET 4
++	SAVE_ALL
++	call *plan9_syscall_table(,%eax,4)
++	movl %eax,PT_EAX(%esp)		# store the return value
++	jmp syscall_exit
++	CFI_ENDPROC
++ENDPROC(plan9_system_call)
++#endif
++
+ 	# system call handler stub
+ ENTRY(system_call)
+ 	RING0_INT_FRAME			# can't unwind into user space anyway
+@@ -1207,6 +1220,10 @@
+ #endif /* CONFIG_FUNCTION_TRACER */
+ 
+ .section .rodata,"a"
++
++#ifdef CONFIG_BINFMT_PLAN9
++# include "plan9_syscall_table.S"
++#endif
+ #include "syscall_table_32.S"
+ 
+ syscall_table_size=(.-sys_call_table)
+--- /usr/src/linux-2.6.28-rc6/arch/x86/kernel/traps.c	2008-12-01 20:06:11.000000000 +0530
++++ arch/x86/kernel/traps.c	2008-12-02 16:49:45.000000000 +0530
+@@ -76,6 +76,9 @@
+ EXPORT_SYMBOL_GPL(used_vectors);
+ 
+ asmlinkage int system_call(void);
++#ifdef CONFIG_BINFMT_PLAN9
++asmlinkage int plan9_system_call(void);
++#endif
+ 
+ /* Do we ignore FPU interrupts ? */
+ char ignore_fpu_irq;
+@@ -1008,7 +1011,12 @@
+ 	}
+ 
+ 	set_system_trap_gate(SYSCALL_VECTOR, &system_call);
+-
++	
++	#ifdef CONFIG_BINFMT_PLAN9
++	set_system_trap_gate(PLAN9_SYSCALL_VECTOR, &plan9_system_call);
++	set_bit(PLAN9_SYSCALL_VECTOR, used_vectors);
++	#endif
++	
+ 	/* Reserve all the builtin and the syscall vector: */
+ 	for (i = 0; i < FIRST_EXTERNAL_VECTOR; i++)
+ 		set_bit(i, used_vectors);
+--- /dev/null	2008-12-02 23:02:30.567009889 +0530
++++ arch/x86/kernel/plan9_syscall_table.S	2008-12-02 16:44:50.000000000 +0530
+@@ -0,0 +1,54 @@
++ENTRY(plan9_syscall_table)
++	.long sys_plan9_sysr        /* 0 */
++	.long sys_plan9_deprecated  /* _errstr */
++	.long sys_plan9_bind
++	.long sys_plan9_chdir
++	.long sys_plan9_close
++	.long sys_plan9_dup         /* 5 */
++	.long sys_plan9_alarm
++	.long sys_plan9_exec
++	.long sys_plan9_exits
++	.long sys_plan9_deprecated  /* _fsession */
++	.long sys_plan9_fauth       /* 10 */
++	.long sys_plan9_deprecated  /* _fstat */
++	.long sys_plan9_segbrk
++	.long sys_plan9_deprecated  /* _mount */
++	.long sys_plan9_open
++	.long sys_plan9_deprecated  /* 15, _read */
++	.long sys_plan9_oseek
++	.long sys_plan9_sleep
++	.long sys_plan9_deprecated  /* _stat */
++	.long sys_plan9_rfork
++	.long sys_plan9_deprecated  /* 20, _write */
++	.long sys_plan9_pipe
++	.long sys_plan9_create
++	.long sys_plan9_fd2path
++	.long sys_plan9_brk
++	.long sys_plan9_remove      /* 25 */
++	.long sys_plan9_deprecated  /* _wstat */
++	.long sys_plan9_deprecated  /* _fwstat */
++	.long sys_plan9_notify
++	.long sys_plan9_noted
++	.long sys_plan9_segattach   /* 30 */
++	.long sys_plan9_segdetach
++	.long sys_plan9_segfree
++	.long sys_plan9_segflush
++	.long sys_plan9_rendezvous
++	.long sys_plan9_unmount     /* 35 */
++	.long sys_plan9_deprecated  /* _wait */
++	.long sys_plan9_semacquire
++	.long sys_plan9_semrelease
++	.long sys_plan9_seek
++	.long sys_plan9_fversion    /* 40 */
++	.long sys_plan9_errstr
++	.long sys_plan9_stat
++	.long sys_plan9_fstat
++	.long sys_plan9_wstat
++	.long sys_plan9_fwstat      /* 45 */
++	.long sys_plan9_mount
++	.long sys_plan9_await
++	.long sys_plan9_deprecated  /* MISSING */
++	.long sys_plan9_deprecated  /* MISSING */
++	.long sys_plan9_pread       /* 50 */
++	.long sys_plan9_pwrite
++END(plan9_syscall_table)
+--- /usr/src/linux-2.6.28-rc6/arch/x86/include/asm/irq_vectors.h	2008-12-01 20:05:59.000000000 +0530
++++ arch/x86/include/asm/irq_vectors.h	2008-12-02 17:42:41.000000000 +0530
+@@ -13,6 +13,9 @@
+ 
+ #ifdef CONFIG_X86_32
+ # define SYSCALL_VECTOR		0x80
++#ifdef CONFIG_BINFMT_PLAN9
++# define PLAN9_SYSCALL_VECTOR	0x40
++#endif
+ #else
+ # define IA32_SYSCALL_VECTOR	0x80
+ #endif
