@@ -39,7 +39,7 @@ static void mangle_tos(unsigned long entry)
 	get_user(c, (char __user *)entry + 2);
 	get_user(d, (char __user *)entry + 3);
 	get_user(e, (char __user *)entry + 4);
-	printk(KERN_ALERT "9load: MTIKI %x %x %x %x %x\n", a, b, c, d, e);
+
 	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
 		put_user(0x1D, (char __user *)entry + 4);
 	}
@@ -74,8 +74,8 @@ static unsigned long __user *create_args(char __user * p,
 		} while (c);
 	}
 	put_user(NULL, argv);
-	current->mm->arg_end = current->mm->env_start = current->mm->env_end =
-	    (unsigned long)p;
+	current->mm->arg_end = current->mm->env_start =
+		current->mm->env_end = (unsigned long)p;
 
 	return sp;
 }
@@ -122,11 +122,12 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	set_personality(PER_LINUX);
 
 	/* Set code sections */
-	current->mm->end_code = TXT_ADDR + (current->mm->start_code = STR_ADDR);
+	current->mm->end_code = TXT_ADDR +
+		(current->mm->start_code = STR_ADDR);
 	current->mm->end_data = ex.data +
-	    (current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
+		(current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
 	current->mm->brk = ex.bss +
-	    (current->mm->start_brk = current->mm->end_data);
+		(current->mm->start_brk = current->mm->end_data);
 	current->mm->mmap_base = 0;
 	current->mm->free_area_cache = 0;
 	current->mm->cached_hole_size = 0;
@@ -136,20 +137,20 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	/* mmap text in */
 	down_write(&current->mm->mmap_sem);
 	fpos = do_mmap(bprm->file, STR_ADDR, TXT_ADDR,
-		       PROT_READ | PROT_EXEC,
-		       MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
+			PROT_READ | PROT_EXEC,
+			MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
 	up_write(&current->mm->mmap_sem);
 
 	/* copy data in */
 	down_write(&current->mm->mmap_sem);
-	error =
-	    do_mmap(NULL, DAT_ADDR, ex.data + ex.bss,
-		    PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE, 0);
+	error = do_mmap(NULL, DAT_ADDR, ex.data + ex.bss,
+			PROT_READ | PROT_WRITE,
+			MAP_FIXED | MAP_PRIVATE, 0);
 	up_write(&current->mm->mmap_sem);
 
 	pos = TXT_ADDR;
 	bprm->file->f_op->read(bprm->file,
-			       (char *)DAT_ADDR, ex.data + ex.bss, &pos);
+				(char *)DAT_ADDR, ex.data + ex.bss, &pos);
 
 	/* setup env and arguments on stack */
 	set_binfmt(&plan9_format);
@@ -160,12 +161,15 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	}
 
 	current->mm->start_stack =
-	    (unsigned long)create_args((char __user *)bprm->p, bprm, regs);
+		(unsigned long)create_args((char __user *)bprm->p,
+						bprm, regs);
 
 	mangle_tos(ex.entry);
 	start_thread(regs, ex.entry, current->mm->start_stack);
-	printk(KERN_INFO "9load: Program started: EBX: %lx, EIP: %lx\n",
-	       regs->bx, regs->ip);
+	
+	if (printk_ratelimit())
+		printk(KERN_INFO "9load: Program started: "
+			"EBX: %lx, EIP: %lx\n", regs->bx, regs->ip);
 
 	return 0;
 }
