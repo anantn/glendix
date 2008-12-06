@@ -9,4 +9,4 @@ section .text
 _start:
 	mov eax,8  
 	mov ebx,hello
-	int 81h
+	int 40h
