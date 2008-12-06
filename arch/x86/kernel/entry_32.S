@@ -412,16 +412,17 @@ sysexit_audit:
 .popsection
 ENDPROC(ia32_sysenter_target)
 
+  # plan 9 system call handler
 #ifdef CONFIG_BINFMT_PLAN9
 ENTRY(plan9_system_call)
-	RING0_INT_FRAME			# can't unwind into user space anyway
-	pushl %eax			# save orig_eax
-	CFI_ADJUST_CFA_OFFSET 4
-	SAVE_ALL
-	call *plan9_syscall_table(,%eax,4)
-	movl %eax,PT_EAX(%esp)		# store the return value
-	jmp syscall_exit
-	CFI_ENDPROC
+  RING0_INT_FRAME
+  pushl %eax
+  CFI_ADJUST_CFA_OFFSET 4
+  SAVE_ALL
+  call *plan9_syscall_table(,%eax,4)
+  movl %eax,PT_EAX(%esp)
+  jmp syscall_exit
+  CFI_ENDPROC
 ENDPROC(plan9_system_call)
 #endif
 
@@ -1220,7 +1221,6 @@ END(mcount)
 #endif /* CONFIG_FUNCTION_TRACER */
 
 .section .rodata,"a"
-
 #ifdef CONFIG_BINFMT_PLAN9
 # include "plan9_syscall_table.S"
 #endif
