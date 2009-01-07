@@ -1,5 +1,26 @@
---- /dev/null	2008-12-02 23:02:30.567009889 +0530
-+++ fs/binfmt_plan9.h	2008-12-02 17:23:15.000000000 +0530
+--- fs/Kconfig.binfmt	2008-12-06 15:41:41.000000000 +0100
++++ ../git/fs/Kconfig.binfmt	2008-12-06 15:47:37.000000000 +0100
+@@ -161,3 +161,8 @@
+ 	  You may say M here for module support and later load the module when
+ 	  you have use for it; the module is called binfmt_misc. If you
+ 	  don't know what to answer at this point, say Y.
++
++config BINFMT_PLAN9
++  bool "Enable Plan 9 binary compatibility layer"
++  help
++    Support binaries from the Plan 9 operating system.
+--- fs/Makefile	2009-01-06 04:59:51.000000000 +0100
++++ ../git/fs/Makefile	2009-01-06 05:01:21.000000000 +0100
+@@ -45,6 +45,7 @@
+ obj-$(CONFIG_BINFMT_ELF_FDPIC)	+= binfmt_elf_fdpic.o
+ obj-$(CONFIG_BINFMT_SOM)	+= binfmt_som.o
+ obj-$(CONFIG_BINFMT_FLAT)	+= binfmt_flat.o
++obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9.o
+ 
+ obj-$(CONFIG_FS_MBCACHE)	+= mbcache.o
+ obj-$(CONFIG_FS_POSIX_ACL)	+= posix_acl.o xattr_acl.o
+--- /dev/null	2009-01-06 05:06:53.000000000 +0100
++++ ../git/fs/binfmt_plan9.h	2008-12-02 12:53:15.000000000 +0100
 @@ -0,0 +1,42 @@
 +/*
 + * Binary loader for Plan 9's a.out executable format
@@ -43,9 +64,9 @@
 +#define TXT_ADDR	HDR_SIZE + ex.text	/* TEXT Address */
 +#define DAT_ADDR	STR_ADDR + PAGE_ALIGN(TXT_ADDR)	/* DATA&BSS Address */
 +
---- /dev/null	2008-12-02 23:02:30.567009889 +0530
-+++ fs/binfmt_plan9.c	2008-12-02 17:22:41.000000000 +0530
-@@ -0,0 +1,188 @@
+--- /dev/null	2009-01-06 05:06:53.000000000 +0100
++++ ../git/fs/binfmt_plan9.c	2009-01-06 05:07:59.000000000 +0100
+@@ -0,0 +1,193 @@
 +/*
 + * Binary loader for Plan 9's a.out executable format
 + * 
@@ -87,7 +108,7 @@
 +	get_user(c, (char __user *)entry + 2);
 +	get_user(d, (char __user *)entry + 3);
 +	get_user(e, (char __user *)entry + 4);
-+	printk(KERN_ALERT "9load: MTIKI %x %x %x %x %x\n", a, b, c, d, e);
++
 +	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
 +		put_user(0x1D, (char __user *)entry + 4);
 +	}
@@ -122,8 +143,8 @@
 +		} while (c);
 +	}
 +	put_user(NULL, argv);
-+	current->mm->arg_end = current->mm->env_start = current->mm->env_end =
-+	    (unsigned long)p;
++	current->mm->arg_end = current->mm->env_start =
++		current->mm->env_end = (unsigned long)p;
 +
 +	return sp;
 +}
@@ -170,11 +191,12 @@
 +	set_personality(PER_LINUX);
 +
 +	/* Set code sections */
-+	current->mm->end_code = TXT_ADDR + (current->mm->start_code = STR_ADDR);
++	current->mm->end_code = TXT_ADDR +
++		(current->mm->start_code = STR_ADDR);
 +	current->mm->end_data = ex.data +
-+	    (current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
++		(current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
 +	current->mm->brk = ex.bss +
-+	    (current->mm->start_brk = current->mm->end_data);
++		(current->mm->start_brk = current->mm->end_data);
 +	current->mm->mmap_base = 0;
 +	current->mm->free_area_cache = 0;
 +	current->mm->cached_hole_size = 0;
@@ -184,20 +206,20 @@
 +	/* mmap text in */
 +	down_write(&current->mm->mmap_sem);
 +	fpos = do_mmap(bprm->file, STR_ADDR, TXT_ADDR,
-+		       PROT_READ | PROT_EXEC,
-+		       MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
++			PROT_READ | PROT_EXEC,
++			MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
 +	up_write(&current->mm->mmap_sem);
 +
 +	/* copy data in */
 +	down_write(&current->mm->mmap_sem);
-+	error =
-+	    do_mmap(NULL, DAT_ADDR, ex.data + ex.bss,
-+		    PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE, 0);
++	error = do_mmap(NULL, DAT_ADDR, ex.data + ex.bss,
++			PROT_READ | PROT_WRITE,
++			MAP_FIXED | MAP_PRIVATE, 0);
 +	up_write(&current->mm->mmap_sem);
 +
 +	pos = TXT_ADDR;
 +	bprm->file->f_op->read(bprm->file,
-+			       (char *)DAT_ADDR, ex.data + ex.bss, &pos);
++				(char *)DAT_ADDR, ex.data + ex.bss, &pos);
 +
 +	/* setup env and arguments on stack */
 +	set_binfmt(&plan9_format);
@@ -208,12 +230,15 @@
 +	}
 +
 +	current->mm->start_stack =
-+	    (unsigned long)create_args((char __user *)bprm->p, bprm, regs);
++		(unsigned long)create_args((char __user *)bprm->p,
++						bprm, regs);
 +
 +	mangle_tos(ex.entry);
 +	start_thread(regs, ex.entry, current->mm->start_stack);
-+	printk(KERN_INFO "9load: Program started: EBX: %lx, EIP: %lx\n",
-+	       regs->bx, regs->ip);
++	
++	if (printk_ratelimit())
++		printk(KERN_INFO "9load: Program started: "
++			"EBX: %lx, EIP: %lx\n", regs->bx, regs->ip);
 +
 +	return 0;
 +}
@@ -234,27 +259,4 @@
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Anant Narayanan <anant@kix.in>");
 +MODULE_DESCRIPTION("Binary loader for Plan9's a.out executable format");
---- /usr/src/linux-2.6.28-rc6/fs/Makefile	2008-12-01 20:07:02.000000000 +0530
-+++ fs/Makefile	2008-12-02 16:47:48.000000000 +0530
-@@ -37,6 +37,7 @@
- obj-$(CONFIG_BINFMT_AOUT)	+= binfmt_aout.o
- obj-$(CONFIG_BINFMT_EM86)	+= binfmt_em86.o
- obj-$(CONFIG_BINFMT_MISC)	+= binfmt_misc.o
-+obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9.o binfmt_plan9_syscalls.o
- 
- # binfmt_script is always there
- obj-y				+= binfmt_script.o
---- /usr/src/linux-2.6.28-rc6/fs/Kconfig.binfmt	2008-12-01 20:07:02.000000000 +0530
-+++ fs/Kconfig.binfmt	2008-12-02 16:44:50.000000000 +0530
-@@ -81,6 +81,11 @@
- 	help
- 	  Support FLAT shared libraries
- 
-+config BINFMT_PLAN9
-+	bool "Enable Plan 9 binary compatibility layer"
-+	help
-+	  Support binaries from the Plan 9 operating system.
 +
- config HAVE_AOUT
-        def_bool n
- 

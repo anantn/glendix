@@ -20,8 +20,7 @@ obj-y +=	no-block.o
 endif
 
 obj-$(CONFIG_BLK_DEV_INTEGRITY) += bio-integrity.o
-obj-$(CONFIG_INOTIFY)		+= inotify.o
-obj-$(CONFIG_INOTIFY_USER)	+= inotify_user.o
+obj-y				+= notify/
 obj-$(CONFIG_EPOLL)		+= eventpoll.o
 obj-$(CONFIG_ANON_INODES)	+= anon_inodes.o
 obj-$(CONFIG_SIGNALFD)		+= signalfd.o
@@ -46,7 +45,7 @@ obj-$(CONFIG_COMPAT_BINFMT_ELF)	+= compat_binfmt_elf.o
 obj-$(CONFIG_BINFMT_ELF_FDPIC)	+= binfmt_elf_fdpic.o
 obj-$(CONFIG_BINFMT_SOM)	+= binfmt_som.o
 obj-$(CONFIG_BINFMT_FLAT)	+= binfmt_flat.o
-obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9.o binfmt_plan9_syscalls.o
+obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9.o
 
 obj-$(CONFIG_FS_MBCACHE)	+= mbcache.o
 obj-$(CONFIG_FS_POSIX_ACL)	+= posix_acl.o xattr_acl.o
@@ -56,9 +55,8 @@ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
 obj-$(CONFIG_QUOTA)		+= dquot.o
 obj-$(CONFIG_QFMT_V1)		+= quota_v1.o
 obj-$(CONFIG_QFMT_V2)		+= quota_v2.o
+obj-$(CONFIG_QUOTA_TREE)	+= quota_tree.o
 obj-$(CONFIG_QUOTACTL)		+= quota.o
-
-obj-$(CONFIG_DNOTIFY)		+= dnotify.o
 
 obj-$(CONFIG_PROC_FS)		+= proc/
 obj-y				+= partitions/

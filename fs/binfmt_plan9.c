@@ -190,3 +190,4 @@ module_exit(plan9_aout_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Anant Narayanan <anant@kix.in>");
 MODULE_DESCRIPTION("Binary loader for Plan9's a.out executable format");
+
