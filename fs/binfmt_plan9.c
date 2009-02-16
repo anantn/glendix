@@ -19,7 +19,7 @@
 #include <asm/processor.h>
 #include <asm/byteorder.h>
 
-#include <asm/binfmt_plan9.h>
+#include "binfmt_plan9.h"
 
 /*
  * All Plan 9 programs linked with libc obtain the address of the
