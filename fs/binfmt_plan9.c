@@ -21,6 +21,15 @@
 
 #include "binfmt_plan9.h"
 
+static int load_plan9_binary(struct linux_binprm *, struct pt_regs *);
+
+static struct linux_binfmt plan9_format = {
+       .module = THIS_MODULE,
+       .load_binary = load_plan9_binary,
+       .load_shlib = NULL,
+       .core_dump = NULL
+};
+
 /*
  * All Plan 9 programs linked with libc obtain the address of the
  * '_tos' structure from EAX when executing _main().
@@ -64,7 +73,7 @@ static unsigned long __user *create_args(char __user *p,
 	unsigned long __user *sp;
 	int argc = bprm->argc;
         
-        unsigned long q = (unsigned long p);
+        unsigned long q = (unsigned long)p;
         
 	sp = (void __user *)
 	    ((-(unsigned long)sizeof(char *)) & q);
@@ -186,11 +195,6 @@ static int load_plan9_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 
 	return 0;
 }
-
-static struct linux_binfmt plan9_format = {
-	.module = THIS_MODULE,
-	.load_binary = load_plan9_binary
-};
 
 static int __init plan9_aout_init(void)
 {
