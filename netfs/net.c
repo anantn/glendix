@@ -15,7 +15,7 @@
 #include <asm/uaccess.h>	/* copy_to_user */
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Rahul Murmuria");
+MODULE_AUTHOR("Rahul Murmuria <rahul@murmuria.in>");
 
 #define NET_MAGIC 0x19980122
 
@@ -79,7 +79,9 @@ static ssize_t slashnet_read_file(struct file *filp, char *dnsquery,
 	if (copy_to_user(dnsquery, tmp + *offset, count))
 		return -EFAULT;
 	
-	 *offset += count;
+	/* debug */
+	printk("*** value of count in read: %d ***\n", count);
+	*offset += count;
 	return count;
 }
 
@@ -98,11 +100,16 @@ static ssize_t slashnet_write_file(struct file *filp, const char *dnsquery,
 	memset(tmp, 0, TMPSIZE);
 	if(copy_from_user(tmp, dnsquery, count))
 		return -EFAULT;
-	memcpy (buffer, tmp, count-1);
+	tmp[count-1] = '\0';
+	memcpy (buffer, tmp, count);
+	/* debug */
 	printk("*** value buffer has in write_file: %s ***\n", (char *) filp->private_data);
-	/* Although private_data has required info here, it doesnot retain 
-	 * its value by the time we reach slashnet_read_file. Hence we are 
-	 * currently using a static global variable, buffer. */
+	
+/* 
+ * Although private_data has required info here, it doesnot retain 
+ * its value by the time we reach slashnet_read_file. Hence we are 
+ * currently using a static global variable, buffer. 
+ */
 	
 	return count;
 }
@@ -208,7 +215,9 @@ static void slashnet_create_files (struct super_block *sb, struct dentry *root)
 	memset (buffer, 0, TMPSIZE);
 	slashnet_create_file(sb, root, "cs", buffer);
 	slashnet_create_dir(sb, root, "tcp");
+	kfree(buffer);
 }
+
 
 
 
