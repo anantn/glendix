@@ -83,6 +83,31 @@ asmlinkage long sys_plan9_sleep(struct pt_regs regs)
 		return -1;
 }
 
+asmlinkage long sys_plan9_create(struct pt_regs regs)
+{
+	unsigned long arg1, arg2, arg3;
+	unsigned long *addr = (unsigned long *)regs.esp;
+	printk(KERN_INFO "P9: Syscall %ld create called!\n", regs.eax);
+	
+	get_user(arg1, ++addr);
+	get_user(arg2, ++addr);
+	get_user(arg3, ++addr);
+	
+	/* TODO: check mode */
+	return sys_open((const char __user *)arg1, arg2 | O_CREAT, arg3);
+}
+
+asmlinkage long sys_plan9_remove(struct pt_regs regs)
+{
+	unsigned long arg1;
+	unsigned long *addr = (unsigned long *) regs.esp;
+	printk(KERN_INFO "P9: Syscall %ld remove called!\n", regs.eax);
+
+	get_user(arg1, ++addr);
+
+	return sys_unlink((const char __user *)arg1);
+}
+
 asmlinkage long sys_plan9_seek(struct pt_regs regs)
 {
 	loff_t offset;

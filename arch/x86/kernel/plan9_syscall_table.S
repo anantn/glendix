@@ -16,15 +16,15 @@ ENTRY(plan9_syscall_table)
 	.long sys_plan9_open
 	.long sys_plan9_deprecated    /* 15, _read */
 	.long sys_plan9_unimplemented
-	.long sys_plan9_unimplemented
+	.long sys_plan9_sleep
 	.long sys_plan9_deprecated    /* _stat */
 	.long sys_plan9_unimplemented
 	.long sys_plan9_deprecated    /* 20, _write */
 	.long sys_plan9_unimplemented
+	.long sys_plan9_create
 	.long sys_plan9_unimplemented
 	.long sys_plan9_unimplemented
-	.long sys_plan9_unimplemented
-	.long sys_plan9_unimplemented /* 25 */
+	.long sys_plan9_remove		  /* 25 */
 	.long sys_plan9_deprecated    /* _wstat */
 	.long sys_plan9_deprecated    /* _fwstat */
 	.long sys_plan9_unimplemented
