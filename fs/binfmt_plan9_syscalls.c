@@ -36,6 +36,17 @@ asmlinkage long sys_plan9_exits(struct pt_regs regs)
 	return sys_exit(1);
 }
 
+asmlinkage long sys_plan9_chdir(struct pt_regs regs)
+{
+	unsigned long arg1;
+	unsigned long *addr = (unsigned long *)regs.esp;
+	printk(KERN_INFO "P9: Syscall %ld chdir called!\n", regs.eax);
+
+	get_user(arg1, ++addr);
+	
+	return sys_chdir((char __user *)arg1);
+}
+
 asmlinkage long sys_plan9_close(struct pt_regs regs)
 {
 	unsigned long arg1;
@@ -43,7 +54,29 @@ asmlinkage long sys_plan9_close(struct pt_regs regs)
 	printk(KERN_INFO "P9: Syscall %ld close called!\n", regs.eax);
 
 	get_user(arg1, ++addr);
+	
 	return sys_close(arg1);
+}
+
+asmlinkage long sys_plan9_dup(struct pt_regs regs)
+{
+	unsigned long oldfd, newfd;
+	unsigned long *addr = (unsigned long *)regs.esp;
+	printk(KERN_INFO "P9: Syscall %ld dup called!\n", regs.eax);
+
+	get_user(oldfd, ++addr);
+	get_user(newfd, ++addr);
+	
+	if (newfd == -1) {
+		/* User requested lowest available descriptor */
+		return sys_dup(oldfd);
+	} else {
+		/* User requested newfd to be the new descriptor
+		 * FIXME: Plan 9 ensures that newfd is no more than 20 larger
+		 * than the largest fd currently in use by the program.
+		 */
+		return sys_dup2(oldfd, newfd);
+	}
 }
 
 asmlinkage long sys_plan9_open(struct pt_regs regs)
@@ -117,6 +150,8 @@ asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
 	unsigned long ba, size, len;
 	unsigned long *addr = (unsigned long *)regs.esp;
 	
+	printk(KERN_INFO "P9: Syscall %ld fd2path called!\n", regs.eax);
+	
 	char *page = (char *) __get_free_page(GFP_USER);
 	if (!page)
 		return -ENOMEM;
@@ -150,6 +185,17 @@ asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
 	free_page((unsigned long) page);
 
 	return error;
+}
+
+asmlinkage long sys_plan9_brk(struct pt_regs regs)
+{
+	unsigned long arg1;
+	unsigned long *addr = (unsigned long *) regs.esp;
+	printk(KERN_INFO "P9: Syscall %ld brk called!\n", regs.eax);
+
+	get_user(arg1, ++addr);
+	
+	return sys_brk(arg1);
 }
 
 asmlinkage long sys_plan9_remove(struct pt_regs regs)

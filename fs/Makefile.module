@@ -1,1 +1,0 @@
-obj-m += binfmt_plan9.o binfmt_plan9_syscalls.o

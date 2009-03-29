@@ -2,9 +2,9 @@ ENTRY(plan9_syscall_table)
 	.long sys_plan9_unimplemented /* 0 */
 	.long sys_plan9_deprecated    /* _errstr */
 	.long sys_plan9_unimplemented
-	.long sys_plan9_unimplemented
+	.long sys_plan9_chdir
 	.long sys_plan9_close
-	.long sys_plan9_unimplemented /* 5 */
+	.long sys_plan9_dup			  /* 5 */
 	.long sys_plan9_unimplemented
 	.long sys_plan9_unimplemented
 	.long sys_plan9_exits
@@ -23,7 +23,7 @@ ENTRY(plan9_syscall_table)
 	.long sys_plan9_unimplemented
 	.long sys_plan9_create
 	.long sys_plan9_fd2path
-	.long sys_plan9_unimplemented
+	.long sys_plan9_brk
 	.long sys_plan9_remove		  /* 25 */
 	.long sys_plan9_deprecated    /* _wstat */
 	.long sys_plan9_deprecated    /* _fwstat */
