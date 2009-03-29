@@ -60,13 +60,23 @@ asmlinkage long sys_plan9_close(struct pt_regs regs)
 
 asmlinkage long sys_plan9_dup(struct pt_regs regs)
 {
-	unsigned long arg1, arg2;
+	unsigned long oldfd, newfd;
 	unsigned long *addr = (unsigned long *)regs.esp;
 	printk(KERN_INFO "P9: Syscall %ld dup called!\n", regs.eax);
 
-	get_user(arg1, ++addr);
-	get_user(arg2, ++addr);
-	return sys_dup2(arg1, arg2);
+	get_user(oldfd, ++addr);
+	get_user(newfd, ++addr);
+	
+	if (newfd == -1) {
+		/* User requested lowest available descriptor */
+		return sys_dup(oldfd);
+	} else {
+		/* User requested newfd to be the new descriptor
+		 * FIXME: Plan 9 ensures that newfd is no more than 20 larger
+		 * than the largest fd currently in use by the program.
+		 */
+		return sys_dup2(oldfd, newfd);
+	}
 }
 
 asmlinkage long sys_plan9_open(struct pt_regs regs)
