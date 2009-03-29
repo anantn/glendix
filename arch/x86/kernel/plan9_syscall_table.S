@@ -22,7 +22,7 @@ ENTRY(plan9_syscall_table)
 	.long sys_plan9_deprecated    /* 20, _write */
 	.long sys_plan9_unimplemented
 	.long sys_plan9_create
-	.long sys_plan9_unimplemented
+	.long sys_plan9_fd2path
 	.long sys_plan9_unimplemented
 	.long sys_plan9_remove		  /* 25 */
 	.long sys_plan9_deprecated    /* _wstat */

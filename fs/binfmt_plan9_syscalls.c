@@ -5,8 +5,12 @@
 
 #include <linux/fs.h>
 #include <linux/time.h>
+#include <linux/file.h>
+#include <linux/mount.h>
+#include <linux/dcache.h>
 #include <linux/syscalls.h>
 
+#include <asm/current.h>
 #include <asm/uaccess.h>
 #include <asm/processor.h>
 
@@ -95,6 +99,57 @@ asmlinkage long sys_plan9_create(struct pt_regs regs)
 	
 	/* TODO: check mode */
 	return sys_open((const char __user *)arg1, arg2 | O_CREAT, arg3);
+}
+
+/* Original code is (C) Alexander Viro, linux-kernel, 12th Aug 2000
+ * Original code was modified to fit this structure correctly.
+ */
+asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
+{
+	char *cwd;
+	int fd, error;
+	char __user *buf;
+
+	struct file *file;
+	struct vfsmount *mnt;
+	struct dentry *dentry;
+	
+	unsigned long ba, size, len;
+	unsigned long *addr = (unsigned long *)regs.esp;
+	
+	char *page = (char *) __get_free_page(GFP_USER);
+	if (!page)
+		return -ENOMEM;
+	
+	get_user(fd, ++addr);
+	get_user(ba, ++addr);
+	get_user(size, ++addr);
+
+	buf = (char __user *)ba;
+	
+	file = fget(fd);
+	if (!file)
+		return -EBADF;
+
+	mnt = mntget(file->f_vfsmnt);
+	dentry = dget(file->f_dentry);
+	fput(file);
+	
+	cwd = d_path(dentry, mnt, page, PAGE_SIZE);
+	error = -ERANGE;
+	len = PAGE_SIZE + page - cwd;
+	if (len <= size) {
+		error = len;
+		if (copy_to_user(buf, cwd, len))
+			error = -EFAULT;
+	}
+
+	dput(dentry);
+	mntput(mnt);
+
+	free_page((unsigned long) page);
+
+	return error;
 }
 
 asmlinkage long sys_plan9_remove(struct pt_regs regs)
