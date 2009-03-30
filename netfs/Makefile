@@ -1,9 +1,8 @@
 ifneq ($(KERNELRELEASE),)
-obj-m	:= net.o
+	obj-m += net.o cs.o
 else
-KDIR	:= /lib/modules/$(shell uname -r)/build
-PWD	:= $(shell pwd)
+	KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+	PWD := $(shell pwd)
 default:
-	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
+	$(MAKE) -C $(KERNELDIR) GLENDIX_STANDALONE=1 M=$(PWD) modules
 endif
-
