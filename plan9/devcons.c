@@ -28,16 +28,16 @@ static struct miscdevice pid_dev = {
 };
 
 static ssize_t pid_read(struct file *f, char __user *buf,
-							size_t count, loff_t *offset)
+			size_t count, loff_t *offset)
 {
 	int ret = 0;
-	char pidbuf[4];
+	char pidbuf[6];
 	unsigned long readcount;
 	
 	if (*offset != 0) {
 		ret = 0;
 	} else {
-		ret = scnprintf(pidbuf, 4, "%ld", sys_getpid());
+		ret = scnprintf(pidbuf, 6, "%ld", sys_getpid());
 		readcount = min(count, (size_t)ret);
 		
 		if (!copy_to_user(buf, pidbuf, readcount)) {
