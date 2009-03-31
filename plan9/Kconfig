@@ -1,0 +1,8 @@
+menu "Plan 9 support"
+
+config BINFMT_PLAN9
+	tristate "Kernel support for Plan 9 binaries"
+	---help---
+	  This will compile support for Plan 9 a.out (to be used with Glendix)
+
+endmenu
