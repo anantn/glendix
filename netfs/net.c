@@ -12,6 +12,16 @@ MODULE_AUTHOR("Rahul Murmuria <rahul@murmuria.in>");
 
 static char *buffer;
 
+inline unsigned int blksize_bits(unsigned int size)
+{
+    unsigned int bits = 8;
+    do {
+        bits++;
+        size >>= 1;
+    } while (size > 256);
+    return bits;
+}
+
 static struct inode *slashnet_make_inode(struct super_block *sb, int mode)
 {
 	struct inode *ret = new_inode(sb);
@@ -114,7 +124,7 @@ static struct file_operations slashnet_file_ops = {
 /*
  * Create a file.
  */
-static struct dentry *slashnet_create_file (struct super_block *sb,
+struct dentry *slashnet_create_file (struct super_block *sb,
 		struct dentry *dir, const char *name, char *initval)
 {
 	struct dentry *dentry;
@@ -160,7 +170,7 @@ static struct dentry *slashnet_create_file (struct super_block *sb,
  * almost identical to the "create file" logic, except that we create
  * the inode with a different mode, and use the libfs "simple" operations.
  */
-static struct dentry *slashnet_create_dir (struct super_block *sb,
+struct dentry *slashnet_create_dir (struct super_block *sb,
 		struct dentry *parent, const char *name)
 {
 	struct dentry *dentry;

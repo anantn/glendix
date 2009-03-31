@@ -3,13 +3,14 @@
  * This file may be redistributed under the terms of the GNU GPL.
  */
 
-#include "net.h"
+#define __NO_VERSION__
 
+#include "net.h"
 /*
  * Create the files that we export.
  */
 
-static void cs_create_files (struct super_block *sb, struct dentry *root)
+void cs_create_files (struct super_block *sb, struct dentry *root)
 {
  	static char *cs_tmp;
 	cs_tmp = kmalloc(TMPSIZE, GFP_KERNEL);
