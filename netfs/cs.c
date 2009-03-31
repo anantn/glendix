@@ -16,7 +16,6 @@ void cs_create_files (struct super_block *sb, struct dentry *root)
 	cs_tmp = kmalloc(TMPSIZE, GFP_KERNEL);
 	memset (cs_tmp, 0, TMPSIZE);
 	slashnet_create_file(sb, root, "cs", cs_tmp);
-	slashnet_create_dir(sb, root, "tcp");
 	kfree(cs_tmp);
 }
 

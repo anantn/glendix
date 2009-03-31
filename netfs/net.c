@@ -208,6 +208,8 @@ struct dentry *slashnet_create_dir (struct super_block *sb,
 static void slashnet_create_files (struct super_block *sb, struct dentry *root)
 {
 	cs_create_files (sb, root);
+	tcp_create_files (sb, root);
+	ether_create_files (sb, root);
 }
 
 
