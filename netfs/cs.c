@@ -3,12 +3,6 @@
  * This file may be redistributed under the terms of the GNU GPL.
  */
 
-#include <linux/slab.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/pagemap.h> 	/* PAGE_CACHE_SIZE */
-#include <linux/fs.h>     	/* This is where libfs stuff is declared */
 #include "net.h"
 
 /*

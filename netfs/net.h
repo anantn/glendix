@@ -2,11 +2,16 @@
  * Copyright 2009 Rahul Murmuria <rahul@murmuria.in>
  * This file may be redistributed under the terms of the GNU GPL.
  */
-
-#include <linux/kernel.h>
+#include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/slab.h>
+#include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/fs.h>     	/* This is where libfs stuff is declared */
+#include <linux/string.h>
+#include <linux/pagemap.h>
+
+#include <asm/atomic.h>
+#include <asm/uaccess.h>
 
 #define NET_MAGIC 0x19980122
 
