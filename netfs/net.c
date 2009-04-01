@@ -5,21 +5,14 @@
  * from http://lwn.net which is a sample implementation over libfs.
  */
 
-#include <linux/slab.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/pagemap.h> 	/* PAGE_CACHE_SIZE */
-#include <linux/fs.h>     	/* This is where libfs stuff is declared */
-#include <asm/atomic.h>
-#include <asm/uaccess.h>	/* copy_to_user */
+#include "net.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rahul Murmuria <rahul@murmuria.in>");
 
-#define NET_MAGIC 0x19980122
+static char *buffer;
 
-static inline unsigned int blksize_bits(unsigned int size)
+inline unsigned int blksize_bits(unsigned int size)
 {
     unsigned int bits = 8;
     do {
@@ -28,10 +21,6 @@ static inline unsigned int blksize_bits(unsigned int size)
     } while (size > 256);
     return bits;
 }
-
-static char *buffer;
-
-#define TMPSIZE 128
 
 static struct inode *slashnet_make_inode(struct super_block *sb, int mode)
 {
@@ -68,19 +57,26 @@ static int slashnet_open(struct inode *inode, struct file *filp)
 static ssize_t slashnet_read_file(struct file *filp, char *dnsquery,
 		size_t count, loff_t *offset)
 {
-	char tmp[TMPSIZE];
-	int len;
-	memcpy (tmp, buffer, sizeof(tmp));
-	len = sizeof(buffer);
+	int len, retval;
+	len = strlen(buffer);
 	if (*offset > len)
 		return 0;
 	if (count > len - *offset)
 		count = len - *offset;
-	if (copy_to_user(dnsquery, tmp + *offset, count))
+	
+	retval = copy_to_user(dnsquery, buffer + *offset, count);
+
+	if (retval)
 		return -EFAULT;
 	
 	/* debug */
-	printk("*** value of count in read: %d ***\n", count);
+	/*
+	printk("*** value buffer has in read_file: %s ***\n", buffer);
+	printk("*** value of retval in copy_to_user: %d ***\n", retval);
+	printk("*** value of offset in read_file: %d ***\n", (int) *offset);
+	printk("*** value of count in read_file: %d ***\n", count);
+	printk("*** value of len in read_file: %d ***\n", len);
+	*/
 	*offset += count;
 	return count;
 }
@@ -128,7 +124,7 @@ static struct file_operations slashnet_file_ops = {
 /*
  * Create a file.
  */
-static struct dentry *slashnet_create_file (struct super_block *sb,
+struct dentry *slashnet_create_file (struct super_block *sb,
 		struct dentry *dir, const char *name, char *initval)
 {
 	struct dentry *dentry;
@@ -174,7 +170,7 @@ static struct dentry *slashnet_create_file (struct super_block *sb,
  * almost identical to the "create file" logic, except that we create
  * the inode with a different mode, and use the libfs "simple" operations.
  */
-static struct dentry *slashnet_create_dir (struct super_block *sb,
+struct dentry *slashnet_create_dir (struct super_block *sb,
 		struct dentry *parent, const char *name)
 {
 	struct dentry *dentry;
@@ -211,11 +207,9 @@ static struct dentry *slashnet_create_dir (struct super_block *sb,
 
 static void slashnet_create_files (struct super_block *sb, struct dentry *root)
 {
-	buffer = kmalloc(TMPSIZE, GFP_KERNEL);
-	memset (buffer, 0, TMPSIZE);
-	slashnet_create_file(sb, root, "cs", buffer);
-	slashnet_create_dir(sb, root, "tcp");
-	kfree(buffer);
+	cs_create_files (sb, root);
+	tcp_create_files (sb, root);
+	ether_create_files (sb, root);
 }
 
 

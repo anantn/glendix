@@ -1,9 +1,16 @@
-ifneq ($(KERNELRELEASE),)
-obj-m	:= net.o
-else
-KDIR	:= /lib/modules/$(shell uname -r)/build
-PWD	:= $(shell pwd)
-default:
-	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
-endif
+TARGET = plan9_net
+OBJS = net.o cs.o tcp.o ether.o
+
+KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+PWD := $(shell pwd)
+
+obj-m += $(TARGET).o 
+$(TARGET)-objs := $(OBJS)
+
+all: 
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	-rm -f *.o *.ko .*.cmd .*.flags *.mod.c
 
