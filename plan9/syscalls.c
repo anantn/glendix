@@ -14,7 +14,10 @@
 
 #include <asm/current.h>
 #include <asm/uaccess.h>
+#include <asm/syscalls.h>
 #include <asm/processor.h>
+
+#include "p9_constants.h"
 
 asmlinkage long sys_plan9_unimplemented(struct pt_regs regs)
 {
@@ -302,5 +305,74 @@ asmlinkage long sys_plan9_pwrite(struct pt_regs regs)
 	} else {
 		return sys_pwrite64(fd, (char __user *)buf, nbytes, offset);
 	}
+}
+
+asmlinkage long sys_plan9_rfork(struct pt_regs regs)
+{
+	long ret = -1;
+	int clone_flags = 1;
+	unsigned long flags;
+	unsigned long *addr = (unsigned long *)regs.sp;
+
+	printk(KERN_INFO "P9: Syscall %ld rfork called!\n", regs.ax);
+	get_user(flags, ++addr);
+	printk(KERN_INFO "P9: rfork called with %lx\n", flags);
+
+	/* Check for invalid flag combinations */
+	if ((flags & (RFFDG | RFCFDG)) == (RFFDG | RFCFDG))
+		return -EINVAL;
+	if ((flags & (RFNAMEG | RFCNAMEG)) == (RFNAMEG | RFCNAMEG))
+		return -EINVAL;
+	if ((flags & (RFENVG | RFCENVG)) == (RFENVG | RFCENVG))
+		return -EINVAL;
+
+	if (flags & RFPROC) {
+		if (flags & (RFMEM | RFNOWAIT))
+			return -EINVAL;
+		
+		if (flags & RFNOWAIT) {
+			printk(KERN_INFO "rfork with RFNOWAIT unimplemented!\n");	
+		}
+
+		if (flags & RFNAMEG) {
+			clone_flags |= (CLONE_NEWNS | CLONE_FILES);
+		} else if (flags & RFCNAMEG) {
+			clone_flags |= (CLONE_FILES);
+		}
+
+		if (flags & RFNOMNT) {
+			printk(KERN_INFO "rfork with RFNOMNT unimplemented!\n");
+		}
+		if (flags & RFENVG) {
+			printk(KERN_INFO "rfork with RFENVG unimplemented!\n");
+		} else if (flags & RFCENVG) {
+			printk(KERN_INFO "rfork with RFCENVG unimplemented!\n");
+		}
+		if (flags & RFNOTEG) {
+			printk(KERN_INFO "rfork with RNOTEG unimplemented!\n");
+		}
+		if (flags & RFREND) {
+			printk(KERN_INFO "rfork with RFREND unimplemented!\n");
+		}
+		if (flags & RFMEM) {
+			printk(KERN_INFO "rfork with RFCENVG unimplemented!\n");
+		}
+
+		regs.bx = clone_flags;
+		ret = sys_clone(regs);
+
+		if (flags & RFCNAMEG) {
+			printk(KERN_INFO "rfork with RFCNAMEG called, unsharing!\n");
+			sys_unshare(CLONE_NEWNS);
+		}
+		if (flags & RFFDG) {
+			printk(KERN_INFO "rfork with RFFDG unimplemented!\n");
+		} else if (flags & RFCFDG) {
+			printk(KERN_INFO "rfork with RFCFDG called, unsharing!\n");
+			sys_unshare(CLONE_FILES);
+		}
+	}
+	
+	return ret;
 }
 
