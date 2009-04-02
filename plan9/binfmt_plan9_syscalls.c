@@ -8,6 +8,8 @@
 #include <linux/file.h>
 #include <linux/mount.h>
 #include <linux/dcache.h>
+#include <linux/string.h>
+#include <linux/fsnotify.h>
 #include <linux/syscalls.h>
 
 #include <asm/current.h>
@@ -81,6 +83,9 @@ asmlinkage long sys_plan9_dup(struct pt_regs regs)
 
 asmlinkage long sys_plan9_open(struct pt_regs regs)
 {
+	int fd, len;
+	struct file *f;
+	char path[PATH_MAX + 1];
 	unsigned long file, omode;
 	unsigned long *addr = (unsigned long *)regs.sp;
 	printk(KERN_INFO "P9: Syscall %ld open called!\n", regs.ax);
@@ -88,8 +93,37 @@ asmlinkage long sys_plan9_open(struct pt_regs regs)
 	get_user(file, ++addr);
 	get_user(omode, ++addr);
 
-	/* FIXME: Mode needs to be check in all combos! */
-	return sys_open((const char __user *)file, omode, (int) NULL);
+	/* Special case for '#c/pid' */
+	if ((len = strncpy_from_user(path, file, PATH_MAX)) < 0) {
+		return -EFAULT;
+	}
+	path[len] = '\0';
+
+	if (strncmp(path, "#c/pid", 6) == 0) {
+		strncpy(path, "/dev/pid\0", 9);
+		printk(KERN_INFO "P9: open for #c/pid received, changed to %s!\n", path);
+	} else {
+		printk(KERN_INFO "P9: open for %s received\n", path);
+	}
+	
+	fd = PTR_ERR(path);
+
+	if (!IS_ERR(path)) {
+		fd = get_unused_fd();
+		if (fd >= 0) {
+			f = do_filp_open(AT_FDCWD, path, (int)NULL, omode);
+			if (IS_ERR(f)) {
+				put_unused_fd(fd);
+				fd = PTR_ERR(f);
+			} else {
+				fsnotify_open(f->f_path.dentry);
+				fd_install(fd, f);
+			}
+		}
+		putname(path);
+	}
+
+	return (long)fd;
 }
 
 asmlinkage long sys_plan9_sleep(struct pt_regs regs)
