@@ -1,0 +1,953 @@
+diff -Nur ../linux-2.6.29-orig/arch/x86/include/asm/irq_vectors.h ./arch/x86/include/asm/irq_vectors.h
+--- ../linux-2.6.29-orig/arch/x86/include/asm/irq_vectors.h	2009-03-24 00:12:14.000000000 +0100
++++ ./arch/x86/include/asm/irq_vectors.h	2009-04-02 15:06:21.000000000 +0200
+@@ -13,6 +13,7 @@
+ 
+ #ifdef CONFIG_X86_32
+ # define SYSCALL_VECTOR		0x80
++# define PLAN9_SYSCALL_VECTOR	0x40
+ #else
+ # define IA32_SYSCALL_VECTOR	0x80
+ #endif
+diff -Nur ../linux-2.6.29-orig/arch/x86/Kconfig ./arch/x86/Kconfig
+--- ../linux-2.6.29-orig/arch/x86/Kconfig	2009-03-24 00:12:14.000000000 +0100
++++ ./arch/x86/Kconfig	2009-04-02 15:06:24.000000000 +0200
+@@ -1997,3 +1997,5 @@
+ source "arch/x86/kvm/Kconfig"
+ 
+ source "lib/Kconfig"
++
++source "plan9/Kconfig"
+diff -Nur ../linux-2.6.29-orig/arch/x86/kernel/entry_32.S ./arch/x86/kernel/entry_32.S
+--- ../linux-2.6.29-orig/arch/x86/kernel/entry_32.S	2009-03-24 00:12:14.000000000 +0100
++++ ./arch/x86/kernel/entry_32.S	2009-04-02 15:06:27.000000000 +0200
+@@ -412,6 +412,20 @@
+ .popsection
+ ENDPROC(ia32_sysenter_target)
+ 
++#ifdef CONFIG_BINFMT_PLAN9
++        # plan 9 system call handler stub
++ENTRY(plan9_system_call)
++	RING0_INT_FRAME
++	pushl %eax
++	CFI_ADJUST_CFA_OFFSET 4
++	SAVE_ALL
++	call *plan9_syscall_table(,%eax,4)
++	movl %eax,PT_EAX(%esp)                # store the return value
++	jmp syscall_exit
++	CFI_ENDPROC
++ENDPROC(plan9_system_call)
++#endif
++
+ 	# system call handler stub
+ ENTRY(system_call)
+ 	RING0_INT_FRAME			# can't unwind into user space anyway
+@@ -1054,7 +1068,7 @@
+ 
+ .section .rodata,"a"
+ #include "syscall_table_32.S"
+-
++#include "plan9_syscall_table.S"
+ syscall_table_size=(.-sys_call_table)
+ 
+ /*
+diff -Nur ../linux-2.6.29-orig/arch/x86/kernel/irqinit_32.c ./arch/x86/kernel/irqinit_32.c
+--- ../linux-2.6.29-orig/arch/x86/kernel/irqinit_32.c	2009-03-24 00:12:14.000000000 +0100
++++ ./arch/x86/kernel/irqinit_32.c	2009-04-02 15:06:26.000000000 +0200
+@@ -128,7 +128,7 @@
+ 	 */
+ 	for (i =  FIRST_EXTERNAL_VECTOR; i < NR_VECTORS; i++) {
+ 		/* SYSCALL_VECTOR was reserved in trap_init. */
+-		if (i != SYSCALL_VECTOR)
++		if (i != SYSCALL_VECTOR && i != PLAN9_SYSCALL_VECTOR)
+ 			set_intr_gate(i, interrupt[i-FIRST_EXTERNAL_VECTOR]);
+ 	}
+ 
+diff -Nur ../linux-2.6.29-orig/arch/x86/kernel/plan9_syscall_table.S ./arch/x86/kernel/plan9_syscall_table.S
+--- ../linux-2.6.29-orig/arch/x86/kernel/plan9_syscall_table.S	1970-01-01 01:00:00.000000000 +0100
++++ ./arch/x86/kernel/plan9_syscall_table.S	2009-04-02 15:06:25.000000000 +0200
+@@ -0,0 +1,54 @@
++ENTRY(plan9_syscall_table)
++	.long sys_plan9_unimplemented /* 0 */
++	.long sys_plan9_deprecated    /* _errstr */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_chdir
++	.long sys_plan9_close
++	.long sys_plan9_dup			  /* 5 */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_exits
++	.long sys_plan9_deprecated    /* _fsession */
++	.long sys_plan9_unimplemented /* 10 */
++	.long sys_plan9_deprecated    /* _fstat */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_deprecated    /* _mount */
++	.long sys_plan9_open
++	.long sys_plan9_deprecated    /* 15, _read */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_sleep
++	.long sys_plan9_deprecated    /* _stat */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_deprecated    /* 20, _write */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_create
++	.long sys_plan9_fd2path
++	.long sys_plan9_brk
++	.long sys_plan9_remove		  /* 25 */
++	.long sys_plan9_deprecated    /* _wstat */
++	.long sys_plan9_deprecated    /* _fwstat */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented /* 30 */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented /* 35 */
++	.long sys_plan9_deprecated    /* _wait */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_seek
++	.long sys_plan9_unimplemented /* 40 */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented /* 45 */
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented
++	.long sys_plan9_unimplemented /* MISSING */
++	.long sys_plan9_unimplemented /* MISSING */
++	.long sys_plan9_pread         /* 50 */
++	.long sys_plan9_pwrite
++END(plan9_syscall_table)
+diff -Nur ../linux-2.6.29-orig/arch/x86/kernel/traps.c ./arch/x86/kernel/traps.c
+--- ../linux-2.6.29-orig/arch/x86/kernel/traps.c	2009-03-24 00:12:14.000000000 +0100
++++ ./arch/x86/kernel/traps.c	2009-04-02 15:06:27.000000000 +0200
+@@ -68,6 +68,7 @@
+ #include "cpu/mcheck/mce.h"
+ 
+ asmlinkage int system_call(void);
++asmlinkage int plan9_system_call(void);
+ 
+ /* Do we ignore FPU interrupts ? */
+ char ignore_fpu_irq;
+@@ -1009,6 +1010,9 @@
+ 	}
+ 
+ 	set_system_trap_gate(SYSCALL_VECTOR, &system_call);
++#ifdef CONFIG_BINFMT_PLAN9
++	set_system_trap_gate(PLAN9_SYSCALL_VECTOR, &plan9_system_call);
++#endif
+ #endif
+ 
+ 	/* Reserve all the builtin and the syscall vector: */
+@@ -1019,6 +1023,9 @@
+ 	set_bit(IA32_SYSCALL_VECTOR, used_vectors);
+ #else
+ 	set_bit(SYSCALL_VECTOR, used_vectors);
++#ifdef CONFIG_BINFMT_PLAN9
++	set_bit(PLAN9_SYSCALL_VECTOR, used_vectors);
++#endif
+ #endif
+ 	/*
+ 	 * Should be a barrier for any external CPU state:
+diff -Nur ../linux-2.6.29-orig/fs/binfmt_plan9.c ./fs/binfmt_plan9.c
+--- ../linux-2.6.29-orig/fs/binfmt_plan9.c	1970-01-01 01:00:00.000000000 +0100
++++ ./fs/binfmt_plan9.c	2009-04-02 15:07:19.000000000 +0200
+@@ -0,0 +1,227 @@
++/*
++ * Binary loader for Plan 9's a.out executable format
++ * 
++ * Copyright (C) 2008 Anant Narayanan
++ */
++
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/ptrace.h>
++#include <linux/binfmts.h>
++#include <linux/mm.h>
++#include <linux/fs.h>
++#include <linux/mman.h>
++#include <linux/personality.h>
++
++#include <asm/page.h>
++#include <asm/uaccess.h>
++#include <asm/processor.h>
++#include <asm/byteorder.h>
++
++#include "binfmt_plan9.h"
++
++static int load_plan9_binary(struct linux_binprm *, struct pt_regs *);
++
++static struct linux_binfmt plan9_format = {
++	.module		= THIS_MODULE,
++	.load_binary	= load_plan9_binary,
++	.load_shlib	= NULL,
++	.core_dump	= NULL
++};
++
++/*
++ * All Plan 9 programs linked with libc obtain the address of the
++ * '_tos' structure from EAX when executing _main().
++ *
++ * In Linux, however, the value of EAX is not preserved through the exec()
++ * process, hence we look for the MOV(addr, EAX) instruction and mangle it
++ * to MOV(addr, EBX) instead. (Note that we store the _tos address in EBX
++ * in create_args)
++ */
++static void mangle_tos(unsigned long entry)
++{
++	unsigned char a, b, c, d, e;
++	/*
++	 * Error checking for get_user/put_user is not done because
++	 * the user-space isn't actually running yet
++	 */
++	get_user(a, (unsigned long *)entry);
++	get_user(b, (unsigned long *)(entry + 1));
++	get_user(c, (unsigned long *)(entry + 2));
++	get_user(d, (unsigned long *)(entry + 3));
++	get_user(e, (unsigned long *)(entry + 4));
++
++	printk(KERN_INFO "9load: Found %x %x %x %x %x!", a, b, c, d, e);
++	/* Check if our MOV instruction is present */
++	if (a == 0x83 && b == 0xEC && c == 0x48 && d == 0x89 && e == 0x05) {
++		/* Yes, so we change 0x05 (EAX) to 0x1D (EBX)
++		 * (ref: Intel x86 software developer's manual, volume 2A)
++		 */
++		put_user(0x1D, (unsigned long *)(entry + 4));
++	}
++} 
++
++/*
++ * Setup the environment and argument variables on the user-space stack
++ */ 
++static unsigned long __user *create_args(char __user * p,
++				struct linux_binprm * bprm,
++				struct pt_regs * regs)
++{
++	char __user * __user *argv;
++	unsigned long __user *sp;
++	int argc = bprm->argc;
++    
++	unsigned long q = (unsigned long) p;
++
++	sp = (void __user *)((-(unsigned long)sizeof(char *)) & q);
++	
++	/* leave space for TOS: 56 / 4 = 14 */
++	sp -= TOS_SIZE;
++	regs->bx = (unsigned long)sp;
++    
++	sp -= argc+1;
++	argv = (char __user * __user *) sp;
++
++	put_user(argc, --sp);
++	
++	current->mm->arg_start = q;
++	while (argc-- > 0) {
++		char c;
++		put_user(p, argv++);
++		do {
++			get_user(c, p++);
++		} while (c);
++	}
++	put_user(NULL, argv);
++	current->mm->arg_end = current->mm->env_start =
++		current->mm->env_end = q;
++
++	return sp;
++}
++
++static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
++{
++	loff_t pos;
++	struct plan9_exec ex;
++	unsigned long rlim, retval, fpos = 0, tot = 0;
++	
++	/* Load header and fix big-endianess: we are concerned with x86 only */
++	ex       = *((struct plan9_exec *) bprm->buf);
++	ex.magic = be32_to_cpu(ex.magic);
++	ex.text  = be32_to_cpu(ex.text);
++	ex.data  = be32_to_cpu(ex.data);
++	ex.bss	 = be32_to_cpu(ex.bss);
++	ex.syms  = be32_to_cpu(ex.syms);
++	ex.entry = be32_to_cpu(ex.entry);
++	ex.spsz  = be32_to_cpu(ex.spsz);
++	ex.pcsz  = be32_to_cpu(ex.pcsz);
++	
++	tot = 0x20 + ex.text + ex.data + ex.syms + ex.spsz + ex.pcsz;
++	
++	/* Check if this is really a plan 9 executable */
++	if (ex.magic != I_MAGIC)
++		return -ENOEXEC;
++		
++	/* Check initial limits. This avoids letting people circumvent
++	 * size limits imposed on them by creating programs with large
++	 * arrays in the data or bss.
++	 */
++	rlim = current->signal->rlim[RLIMIT_DATA].rlim_cur;
++	if (rlim >= RLIM_INFINITY)
++		rlim = ~0;
++	if (ex.data + ex.bss > rlim)
++		return -ENOMEM;
++
++	/* Flush all traces of the currently running executable */
++	retval = flush_old_exec(bprm);
++	if (retval) {
++		return retval;
++	}
++	/* Point of no return */
++	set_personality(PER_LINUX);
++	
++	/* Set code sections */
++	current->mm->end_code = TXT_ADDR(ex) +
++		(current->mm->start_code = STR_ADDR);
++	current->mm->end_data = ex.data +
++		(current->mm->start_data = PAGE_ALIGN(current->mm->end_code));
++	current->mm->brk = ex.bss +
++		(current->mm->start_brk = current->mm->end_data);
++	current->mm->mmap_base = 0;
++	current->mm->free_area_cache = 0;
++	current->mm->cached_hole_size = 0;
++
++	current->flags &= ~PF_FORKNOEXEC;
++
++	printk(KERN_ALERT "9load: %lx %lx %lx %lx %lx %lx %lx %lx\n",
++						current->mm->start_code,
++						current->mm->end_code,
++						current->mm->start_data,
++						current->mm->end_data,
++						current->mm->start_brk,
++						current->mm->brk,
++						current->mm->mmap_base,
++						tot);
++	
++	/* mmap text in */
++	down_write(&current->mm->mmap_sem);
++	fpos = do_mmap(bprm->file, STR_ADDR, TXT_ADDR(ex),
++			PROT_READ | PROT_EXEC,
++			MAP_FIXED | MAP_PRIVATE | MAP_EXECUTABLE, 0);
++	up_write(&current->mm->mmap_sem);
++	
++	/* copy data in */
++	down_write(&current->mm->mmap_sem);
++	fpos = do_mmap(NULL, DAT_ADDR(ex), ex.data + ex.bss,
++			PROT_READ | PROT_WRITE,
++			MAP_FIXED | MAP_PRIVATE, 0);
++
++	up_write(&current->mm->mmap_sem);
++
++	pos = TXT_ADDR(ex);
++	printk(KERN_ALERT "9load: Read %d!\n", bprm->file->f_op->read(bprm->file,
++				(char *)DAT_ADDR(ex), ex.data + ex.bss, &pos));
++	set_binfmt(&plan9_format);
++	
++	retval = setup_arg_pages(bprm, TASK_SIZE, EXSTACK_DEFAULT);
++    
++	if (retval < 0) {
++		send_sig(SIGKILL, current, 0);
++		return retval;
++	}
++	
++	printk(KERN_ALERT "9load: BPRM Value: %lx\n", bprm->p);
++	
++	current->mm->start_stack = 
++        	(unsigned long) create_args((char __user *) bprm->p, bprm, regs);
++	
++	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->bx);
++	
++	mangle_tos(ex.entry);
++	start_thread(regs, ex.entry, current->mm->start_stack);
++	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->bx, regs->ip);
++	
++	return 0;
++}
++
++static int __init plan9_init(void)
++{
++	printk(KERN_ALERT "Hello, Plan9!\n");
++	return register_binfmt(&plan9_format);
++}
++
++static void __exit plan9_exit(void)
++{
++	unregister_binfmt(&plan9_format);
++	printk(KERN_ALERT "Goodbye, Plan9!\n");
++}
++
++module_init(plan9_init);
++module_exit(plan9_exit);
++
++MODULE_LICENSE		("GPL");
++MODULE_AUTHOR		("Anant Narayanan <anant@kix.in>");
++MODULE_DESCRIPTION	("Binary loader for Plan9's a.out executable format");
++
+diff -Nur ../linux-2.6.29-orig/fs/binfmt_plan9.h ./fs/binfmt_plan9.h
+--- ../linux-2.6.29-orig/fs/binfmt_plan9.h	1970-01-01 01:00:00.000000000 +0100
++++ ./fs/binfmt_plan9.h	2009-04-02 15:07:12.000000000 +0200
+@@ -0,0 +1,43 @@
++/*
++ * Binary loader for Plan 9's a.out executable format
++ * 
++ * Copyright (C) 2008 Anant Narayanan
++ */
++struct plan9_exec
++{
++	unsigned long magic;	/* magic number */
++	unsigned long text;	/* size of text segment */
++	unsigned long data;	/* size of initialized data */
++	unsigned long bss;	/* size of uninitialized data */
++	unsigned long syms;	/* size of symbol table */
++	unsigned long entry;	/* entry point */
++	unsigned long spsz;	/* size of pc/sp offset table */
++	unsigned long pcsz;	/* size of pc/line number table */
++};
++
++#define HDR_MAGIC	0x00008000	/* header expansion */
++
++#define	_MAGIC(f, b)	((f)|((((4*(b))+0)*(b))+7))
++#define	A_MAGIC		_MAGIC(0, 8)		/* 68020 */
++#define	I_MAGIC		_MAGIC(0, 11)		/* intel 386 */
++#define	J_MAGIC		_MAGIC(0, 12)		/* intel 960 (retired) */
++#define	K_MAGIC		_MAGIC(0, 13)		/* sparc */
++#define	V_MAGIC		_MAGIC(0, 16)		/* mips 3000 BE */
++#define	X_MAGIC		_MAGIC(0, 17)		/* att dsp 3210 (retired) */
++#define	M_MAGIC		_MAGIC(0, 18)		/* mips 4000 BE */
++#define	D_MAGIC		_MAGIC(0, 19)		/* amd 29000 (retired) */
++#define	E_MAGIC		_MAGIC(0, 20)		/* arm */
++#define	Q_MAGIC		_MAGIC(0, 21)		/* powerpc */
++#define	N_MAGIC		_MAGIC(0, 22)		/* mips 4000 LE */
++#define	L_MAGIC		_MAGIC(0, 23)		/* dec alpha */
++#define	P_MAGIC		_MAGIC(0, 24)		/* mips 3000 LE */
++#define	U_MAGIC		_MAGIC(0, 25)		/* sparc64 */
++#define	S_MAGIC		_MAGIC(HDR_MAGIC, 26)	/* amd64 */
++#define	T_MAGIC		_MAGIC(HDR_MAGIC, 27)	/* powerpc64 */
++
++#define TOS_SIZE 14	/* Size of Top of Stack: 56 / 4 */
++#define HDR_SIZE 0x20
++#define STR_ADDR 0x1000	/* Start Address */
++#define TXT_ADDR(x) HDR_SIZE + x.text /* TEXT Address */
++#define DAT_ADDR(x) STR_ADDR + PAGE_ALIGN(TXT_ADDR(x)) /* DATA & BSS */
++
+diff -Nur ../linux-2.6.29-orig/fs/Makefile ./fs/Makefile
+--- ../linux-2.6.29-orig/fs/Makefile	2009-03-24 00:12:14.000000000 +0100
++++ ./fs/Makefile	2009-04-02 15:07:10.000000000 +0200
+@@ -37,6 +37,8 @@
+ obj-$(CONFIG_BINFMT_EM86)	+= binfmt_em86.o
+ obj-$(CONFIG_BINFMT_MISC)	+= binfmt_misc.o
+ 
++obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9.o
++
+ # binfmt_script is always there
+ obj-y				+= binfmt_script.o
+ 
+diff -Nur ../linux-2.6.29-orig/Makefile ./Makefile
+--- ../linux-2.6.29-orig/Makefile	2009-03-24 00:12:14.000000000 +0100
++++ ./Makefile	2009-04-02 15:07:49.000000000 +0200
+@@ -636,7 +636,7 @@
+ 
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
++core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ plan9/
+ 
+ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
+ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff -Nur ../linux-2.6.29-orig/plan9/devcons.c ./plan9/devcons.c
+--- ../linux-2.6.29-orig/plan9/devcons.c	1970-01-01 01:00:00.000000000 +0100
++++ ./plan9/devcons.c	2009-04-02 15:08:19.000000000 +0200
+@@ -0,0 +1,65 @@
++/**
++ * Plan 9 '#c' emulation.
++ * Let's start with /dev/pid
++ */
++#include <linux/fs.h>
++#include <linux/init.h>
++#include <linux/types.h>
++#include <linux/module.h>
++#include <linux/uaccess.h>
++#include <linux/syscalls.h>
++#include <linux/miscdevice.h>
++
++MODULE_AUTHOR("Anant Narayanan <anant@kix.in>");
++MODULE_LICENSE("GPL");
++
++static ssize_t pid_read(struct file *, char __user *, size_t, loff_t *);
++
++static const struct file_operations pid_fops = {
++	.owner = THIS_MODULE,
++	.read = pid_read
++	/* .write to /dev/pid doesn't make sense? */
++};
++
++static struct miscdevice pid_dev = {
++	.minor = MISC_DYNAMIC_MINOR,
++	.name = "pid",
++	.fops = &pid_fops
++};
++
++static ssize_t pid_read(struct file *f, char __user *buf,
++			size_t count, loff_t *offset)
++{
++	int ret = 0;
++	char pidbuf[6];
++	unsigned long readcount;
++	
++	if (*offset != 0) {
++		ret = 0;
++	} else {
++		ret = scnprintf(pidbuf, 6, "%ld", sys_getpid());
++		readcount = min(count, (size_t)ret);
++		
++		if (!copy_to_user(buf, pidbuf, readcount)) {
++			*offset += readcount;
++			ret = readcount;
++		} else {
++			ret = -EFAULT;
++		}
++	}
++	
++	return ret;
++}
++
++static int __init cons_init(void)
++{
++	return misc_register(&pid_dev);
++}
++
++static void __exit cons_exit(void)
++{
++	misc_deregister(&pid_dev);
++}
++
++module_init(cons_init);
++module_exit(cons_exit);
+diff -Nur ../linux-2.6.29-orig/plan9/Kconfig ./plan9/Kconfig
+--- ../linux-2.6.29-orig/plan9/Kconfig	1970-01-01 01:00:00.000000000 +0100
++++ ./plan9/Kconfig	2009-04-02 15:08:19.000000000 +0200
+@@ -0,0 +1,8 @@
++menu "Plan 9 support"
++
++config BINFMT_PLAN9
++	tristate "Kernel support for Plan 9 binaries"
++	---help---
++	  This will compile support for Plan 9 a.out (to be used with Glendix)
++
++endmenu
+diff -Nur ../linux-2.6.29-orig/plan9/Makefile ./plan9/Makefile
+--- ../linux-2.6.29-orig/plan9/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ ./plan9/Makefile	2009-04-02 15:08:19.000000000 +0200
+@@ -0,0 +1,8 @@
++#
++# Makefile for Plan 9 system support
++#
++# Anant Narayanan <anant@kix.in>
++# 
++
++obj-$(CONFIG_BINFMT_PLAN9)	+= syscalls.o devcons.o
++
+diff -Nur ../linux-2.6.29-orig/plan9/p9_constants.h ./plan9/p9_constants.h
+--- ../linux-2.6.29-orig/plan9/p9_constants.h	1970-01-01 01:00:00.000000000 +0100
++++ ./plan9/p9_constants.h	2009-04-02 15:08:19.000000000 +0200
+@@ -0,0 +1,18 @@
++/*
++ * Plan 9 constants
++ */
++
++/* rfork */
++#define RFNAMEG		1
++#define RFENVG		2
++#define RFFDG		4
++#define RFNOTEG		8
++#define RFPROC		16
++#define RFMEM		32
++#define RFNOWAIT	64
++#define RFCNAMEG	1024
++#define RFCENVG		2048
++#define RFCFDG		4096
++#define RFREND		8192
++#define RFNOMNT		16384
++
+diff -Nur ../linux-2.6.29-orig/plan9/syscalls.c ./plan9/syscalls.c
+--- ../linux-2.6.29-orig/plan9/syscalls.c	1970-01-01 01:00:00.000000000 +0100
++++ ./plan9/syscalls.c	2009-04-02 15:08:19.000000000 +0200
+@@ -0,0 +1,378 @@
++/*
++ * Copyright (C) 2008 Anant Narayanan <anant@kix.in>
++ * Plan 9 system call implementations
++ */
++
++#include <linux/fs.h>
++#include <linux/time.h>
++#include <linux/file.h>
++#include <linux/mount.h>
++#include <linux/dcache.h>
++#include <linux/string.h>
++#include <linux/fsnotify.h>
++#include <linux/syscalls.h>
++
++#include <asm/current.h>
++#include <asm/uaccess.h>
++#include <asm/syscalls.h>
++#include <asm/processor.h>
++
++#include "p9_constants.h"
++
++asmlinkage long sys_plan9_unimplemented(struct pt_regs regs)
++{
++	if (printk_ratelimit())
++		printk(KERN_ALERT "P9: %ld called but unimplemented!\n",
++			regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_deprecated(struct pt_regs regs)
++{
++	if (printk_ratelimit())
++		printk(KERN_INFO "P9: syscall number %ld DEPRECATED!\n",
++			regs.ax);
++	return 0;
++}
++
++asmlinkage long sys_plan9_exits(struct pt_regs regs)
++{
++	printk(KERN_INFO "P9: Syscall %ld exits called!\n", regs.ax);
++	return sys_exit(1);
++}
++
++asmlinkage long sys_plan9_chdir(struct pt_regs regs)
++{
++	unsigned long dirname;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld chdir called!\n", regs.ax);
++
++	get_user(dirname, ++addr);
++	
++	return sys_chdir((char __user *)dirname);
++}
++
++asmlinkage long sys_plan9_close(struct pt_regs regs)
++{
++	unsigned long fd;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld close called!\n", regs.ax);
++
++	get_user(fd, ++addr);
++	
++	return sys_close(fd);
++}
++
++asmlinkage long sys_plan9_dup(struct pt_regs regs)
++{
++	unsigned long oldfd, newfd;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld dup called!\n", regs.ax);
++
++	get_user(oldfd, ++addr);
++	get_user(newfd, ++addr);
++	
++	if (newfd == -1) {
++		/* User requested lowest available descriptor */
++		return sys_dup(oldfd);
++	} else {
++		/* User requested newfd to be the new descriptor
++		 * FIXME: Plan 9 ensures that newfd is no more than 20 larger
++		 * than the largest fd currently in use by the program.
++		 */
++		return sys_dup2(oldfd, newfd);
++	}
++}
++
++asmlinkage long sys_plan9_open(struct pt_regs regs)
++{
++	int fd, len;
++	struct file *f;
++	char path[PATH_MAX + 1];
++	unsigned long file, omode;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld open called!\n", regs.ax);
++
++	get_user(file, ++addr);
++	get_user(omode, ++addr);
++
++	/* Special case for '#c/pid' */
++	if ((len = strncpy_from_user(path, file, PATH_MAX)) < 0) {
++		return -EFAULT;
++	}
++	path[len] = '\0';
++
++	if (strncmp(path, "#c/pid", 6) == 0) {
++		strncpy(path, "/dev/pid\0", 9);
++		printk(KERN_INFO "P9: open for #c/pid received, changed to %s!\n", path);
++	} else {
++		printk(KERN_INFO "P9: open for %s received\n", path);
++	}
++	
++	fd = PTR_ERR(path);
++
++	if (!IS_ERR(path)) {
++		fd = get_unused_fd();
++		if (fd >= 0) {
++			f = do_filp_open(AT_FDCWD, path, (int)NULL, omode);
++			if (IS_ERR(f)) {
++				put_unused_fd(fd);
++				fd = PTR_ERR(f);
++			} else {
++				fsnotify_open(f->f_path.dentry);
++				fd_install(fd, f);
++			}
++		}
++		putname(path);
++	}
++
++	return (long)fd;
++}
++
++asmlinkage long sys_plan9_sleep(struct pt_regs regs)
++{
++	int rval;
++	struct timespec time;
++	unsigned long millisecs;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld sleep called!\n", regs.ax);
++	
++	get_user(millisecs, ++addr);
++	
++	/* Milliseconds to seconds */
++	time.tv_sec = (time_t)millisecs / 1000;
++	millisecs -= time.tv_sec * 1000;
++	/* Milliseconds to nanoseconds */
++	time.tv_nsec = millisecs * 1000000;
++	
++	printk(KERN_INFO "P9: sleep: %ldms resolved to %lds and %ldns\n",
++				millisecs, time.tv_sec, time.tv_nsec);
++	rval = sys_nanosleep(&time, &time);
++	
++	if (rval == 0)
++		return 0;
++	else
++		return -1;
++}
++
++asmlinkage long sys_plan9_create(struct pt_regs regs)
++{
++	unsigned long file, omode, perm;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld create called!\n", regs.ax);
++	
++	get_user(file, ++addr);
++	get_user(omode, ++addr);
++	get_user(perm, ++addr);
++	
++	/* TODO: check modes */
++	return sys_open((const char __user *)file, omode | O_CREAT, perm);
++}
++
++/* Original code is (C) Alexander Viro, linux-kernel, 12th Aug 2000
++ * Original code was modified to fit this structure correctly.
++ */
++asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
++{
++	char *cwd;
++	int fd, error;
++	char __user *buf;
++
++	struct file *file;
++	struct vfsmount *mnt;
++	struct dentry *dentry;
++	
++	unsigned long abuf, nbuf, len;
++	char *page = (char *) __get_free_page(GFP_USER);
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld fd2path called!\n", regs.ax);
++	
++	if (!page)
++		return -ENOMEM;
++	
++	get_user(fd, ++addr);
++	get_user(abuf, ++addr);
++	get_user(nbuf, ++addr);
++
++	buf = (char __user *)abuf;
++	
++	file = fget(fd);
++	if (!file)
++		return -EBADF;
++
++	mnt = mntget(file->f_vfsmnt);
++	dentry = dget(file->f_dentry);
++	fput(file);
++	
++	cwd = __d_path(dentry, mnt, page, PAGE_SIZE);
++	error = -ERANGE;
++	len = PAGE_SIZE + page - cwd;
++	if (len <= nbuf) {
++		error = len;
++		if (copy_to_user(buf, cwd, len))
++			error = -EFAULT;
++	}
++
++	dput(dentry);
++	mntput(mnt);
++
++	free_page((unsigned long) page);
++
++	return error;
++}
++
++/* FIXME: Find out if this is brk_ or sbrk! */
++asmlinkage long sys_plan9_brk(struct pt_regs regs)
++{
++	unsigned long incr;
++	unsigned long *addr = (unsigned long *) regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld brk called!\n", regs.ax);
++
++	get_user(incr, ++addr);
++	
++	return sys_brk(incr);
++}
++
++asmlinkage long sys_plan9_remove(struct pt_regs regs)
++{
++	unsigned long file;
++	unsigned long *addr = (unsigned long *) regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld remove called!\n", regs.ax);
++
++	get_user(file, ++addr);
++
++	return sys_unlink((const char __user *)file);
++}
++
++/* FIXME: Plan9's seek uses vlong, we ignore n here! */
++asmlinkage long sys_plan9_seek(struct pt_regs regs)
++{
++	loff_t offset;
++	unsigned long fd, n, type;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld seek called!\n", regs.ax);
++
++	get_user(n, ++addr);
++	get_user(fd, ++addr);
++	addr = addr + 2;
++	copy_from_user(&offset, addr, sizeof(loff_t));
++	get_user(type, ++addr);
++
++	return sys_lseek(fd, (off_t) offset, type);
++}
++
++asmlinkage long sys_plan9_pread(struct pt_regs regs)
++{
++	loff_t offset;
++	unsigned long fd, buf, nbytes;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld pread called!\n", regs.ax);
++
++	get_user(fd, ++addr);
++	get_user(buf, ++addr);
++	get_user(nbytes, ++addr);
++	addr = addr + 2;
++	copy_from_user(&offset, addr, sizeof(loff_t));
++
++	printk(KERN_INFO "P9: pread: offset: %llx\n", offset);
++	if (offset == 0xffffffff) {
++		printk(KERN_INFO "P9: pread: calling with %lx, %lx, %lx\n",
++							fd, buf, nbytes);
++		return sys_read(fd, (char __user *)buf, nbytes);
++	} else {
++		return sys_pread64(fd, (char __user *)buf, nbytes, offset); 
++	}
++}
++
++asmlinkage long sys_plan9_pwrite(struct pt_regs regs)
++{
++	loff_t offset;
++	unsigned long fd, buf, nbytes;
++	unsigned long *addr = (unsigned long *)regs.sp;
++	printk(KERN_INFO "P9: Syscall %ld pwrite called!\n", regs.ax);
++
++	get_user(fd, ++addr);
++	get_user(buf, ++addr);
++	get_user(nbytes, ++addr);
++	addr = addr + 2;
++	copy_from_user(&offset, addr, sizeof(loff_t));
++
++	printk(KERN_INFO "P9: pwrite: offset: %llx\n", offset);
++	if (offset == 0xffffffff) {
++		printk(KERN_INFO "P9: pwrite: calling with %lx, %lx, %lx\n",
++							fd, buf, nbytes);
++		return sys_write(fd, (char __user *)buf, nbytes);
++	} else {
++		return sys_pwrite64(fd, (char __user *)buf, nbytes, offset);
++	}
++}
++
++asmlinkage long sys_plan9_rfork(struct pt_regs regs)
++{
++	long ret = -1;
++	int clone_flags = 1;
++	unsigned long flags;
++	unsigned long *addr = (unsigned long *)regs.sp;
++
++	printk(KERN_INFO "P9: Syscall %ld rfork called!\n", regs.ax);
++	get_user(flags, ++addr);
++	printk(KERN_INFO "P9: rfork called with %lx\n", flags);
++
++	/* Check for invalid flag combinations */
++	if ((flags & (RFFDG | RFCFDG)) == (RFFDG | RFCFDG))
++		return -EINVAL;
++	if ((flags & (RFNAMEG | RFCNAMEG)) == (RFNAMEG | RFCNAMEG))
++		return -EINVAL;
++	if ((flags & (RFENVG | RFCENVG)) == (RFENVG | RFCENVG))
++		return -EINVAL;
++
++	if (flags & RFPROC) {
++		if (flags & (RFMEM | RFNOWAIT))
++			return -EINVAL;
++		
++		if (flags & RFNOWAIT) {
++			printk(KERN_INFO "rfork with RFNOWAIT unimplemented!\n");	
++		}
++
++		if (flags & RFNAMEG) {
++			clone_flags |= (CLONE_NEWNS | CLONE_FILES);
++		} else if (flags & RFCNAMEG) {
++			clone_flags |= (CLONE_FILES);
++		}
++
++		if (flags & RFNOMNT) {
++			printk(KERN_INFO "rfork with RFNOMNT unimplemented!\n");
++		}
++		if (flags & RFENVG) {
++			printk(KERN_INFO "rfork with RFENVG unimplemented!\n");
++		} else if (flags & RFCENVG) {
++			printk(KERN_INFO "rfork with RFCENVG unimplemented!\n");
++		}
++		if (flags & RFNOTEG) {
++			printk(KERN_INFO "rfork with RNOTEG unimplemented!\n");
++		}
++		if (flags & RFREND) {
++			printk(KERN_INFO "rfork with RFREND unimplemented!\n");
++		}
++		if (flags & RFMEM) {
++			printk(KERN_INFO "rfork with RFCENVG unimplemented!\n");
++		}
++
++		regs.bx = clone_flags;
++		ret = sys_clone(regs);
++
++		if (flags & RFCNAMEG) {
++			printk(KERN_INFO "rfork with RFCNAMEG called, unsharing!\n");
++			sys_unshare(CLONE_NEWNS);
++		}
++		if (flags & RFFDG) {
++			printk(KERN_INFO "rfork with RFFDG unimplemented!\n");
++		} else if (flags & RFCFDG) {
++			printk(KERN_INFO "rfork with RFCFDG called, unsharing!\n");
++			sys_unshare(CLONE_FILES);
++		}
++	}
++	
++	return ret;
++}
++

@@ -8,11 +8,16 @@
 #include <linux/file.h>
 #include <linux/mount.h>
 #include <linux/dcache.h>
+#include <linux/string.h>
+#include <linux/fsnotify.h>
 #include <linux/syscalls.h>
 
 #include <asm/current.h>
 #include <asm/uaccess.h>
+#include <asm/syscalls.h>
 #include <asm/processor.h>
+
+#include "p9_constants.h"
 
 asmlinkage long sys_plan9_unimplemented(struct pt_regs regs)
 {
@@ -81,6 +86,9 @@ asmlinkage long sys_plan9_dup(struct pt_regs regs)
 
 asmlinkage long sys_plan9_open(struct pt_regs regs)
 {
+	int fd, len;
+	struct file *f;
+	char path[PATH_MAX + 1];
 	unsigned long file, omode;
 	unsigned long *addr = (unsigned long *)regs.sp;
 	printk(KERN_INFO "P9: Syscall %ld open called!\n", regs.ax);
@@ -88,8 +96,37 @@ asmlinkage long sys_plan9_open(struct pt_regs regs)
 	get_user(file, ++addr);
 	get_user(omode, ++addr);
 
-	/* FIXME: Mode needs to be check in all combos! */
-	return sys_open((const char __user *)file, omode, (int) NULL);
+	/* Special case for '#c/pid' */
+	if ((len = strncpy_from_user(path, file, PATH_MAX)) < 0) {
+		return -EFAULT;
+	}
+	path[len] = '\0';
+
+	if (strncmp(path, "#c/pid", 6) == 0) {
+		strncpy(path, "/dev/pid\0", 9);
+		printk(KERN_INFO "P9: open for #c/pid received, changed to %s!\n", path);
+	} else {
+		printk(KERN_INFO "P9: open for %s received\n", path);
+	}
+	
+	fd = PTR_ERR(path);
+
+	if (!IS_ERR(path)) {
+		fd = get_unused_fd();
+		if (fd >= 0) {
+			f = do_filp_open(AT_FDCWD, path, (int)NULL, omode);
+			if (IS_ERR(f)) {
+				put_unused_fd(fd);
+				fd = PTR_ERR(f);
+			} else {
+				fsnotify_open(f->f_path.dentry);
+				fd_install(fd, f);
+			}
+		}
+		putname(path);
+	}
+
+	return (long)fd;
 }
 
 asmlinkage long sys_plan9_sleep(struct pt_regs regs)
@@ -268,5 +305,74 @@ asmlinkage long sys_plan9_pwrite(struct pt_regs regs)
 	} else {
 		return sys_pwrite64(fd, (char __user *)buf, nbytes, offset);
 	}
+}
+
+asmlinkage long sys_plan9_rfork(struct pt_regs regs)
+{
+	long ret = -1;
+	int clone_flags = 1;
+	unsigned long flags;
+	unsigned long *addr = (unsigned long *)regs.sp;
+
+	printk(KERN_INFO "P9: Syscall %ld rfork called!\n", regs.ax);
+	get_user(flags, ++addr);
+	printk(KERN_INFO "P9: rfork called with %lx\n", flags);
+
+	/* Check for invalid flag combinations */
+	if ((flags & (RFFDG | RFCFDG)) == (RFFDG | RFCFDG))
+		return -EINVAL;
+	if ((flags & (RFNAMEG | RFCNAMEG)) == (RFNAMEG | RFCNAMEG))
+		return -EINVAL;
+	if ((flags & (RFENVG | RFCENVG)) == (RFENVG | RFCENVG))
+		return -EINVAL;
+
+	if (flags & RFPROC) {
+		if (flags & (RFMEM | RFNOWAIT))
+			return -EINVAL;
+		
+		if (flags & RFNOWAIT) {
+			printk(KERN_INFO "rfork with RFNOWAIT unimplemented!\n");	
+		}
+
+		if (flags & RFNAMEG) {
+			clone_flags |= (CLONE_NEWNS | CLONE_FILES);
+		} else if (flags & RFCNAMEG) {
+			clone_flags |= (CLONE_FILES);
+		}
+
+		if (flags & RFNOMNT) {
+			printk(KERN_INFO "rfork with RFNOMNT unimplemented!\n");
+		}
+		if (flags & RFENVG) {
+			printk(KERN_INFO "rfork with RFENVG unimplemented!\n");
+		} else if (flags & RFCENVG) {
+			printk(KERN_INFO "rfork with RFCENVG unimplemented!\n");
+		}
+		if (flags & RFNOTEG) {
+			printk(KERN_INFO "rfork with RNOTEG unimplemented!\n");
+		}
+		if (flags & RFREND) {
+			printk(KERN_INFO "rfork with RFREND unimplemented!\n");
+		}
+		if (flags & RFMEM) {
+			printk(KERN_INFO "rfork with RFCENVG unimplemented!\n");
+		}
+
+		regs.bx = clone_flags;
+		ret = sys_clone(regs);
+
+		if (flags & RFCNAMEG) {
+			printk(KERN_INFO "rfork with RFCNAMEG called, unsharing!\n");
+			sys_unshare(CLONE_NEWNS);
+		}
+		if (flags & RFFDG) {
+			printk(KERN_INFO "rfork with RFFDG unimplemented!\n");
+		} else if (flags & RFCFDG) {
+			printk(KERN_INFO "rfork with RFCFDG called, unsharing!\n");
+			sys_unshare(CLONE_FILES);
+		}
+	}
+	
+	return ret;
 }
 

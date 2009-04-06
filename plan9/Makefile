@@ -4,5 +4,5 @@
 # Anant Narayanan <anant@kix.in>
 # 
 
-obj-$(CONFIG_BINFMT_PLAN9)	+= binfmt_plan9_syscalls.o devcons.o
+obj-$(CONFIG_BINFMT_PLAN9)	+= syscalls.o devcons.o
 
