@@ -97,7 +97,7 @@ asmlinkage long sys_plan9_open(struct pt_regs regs)
 	get_user(omode, ++addr);
 
 	/* Special case for '#c/pid' */
-	if ((len = strncpy_from_user(path, file, PATH_MAX)) < 0) {
+	if ((len = strncpy_from_user(path, (char __user *)file, PATH_MAX)) < 0) {
 		return -EFAULT;
 	}
 	path[len] = '\0';
@@ -114,7 +114,7 @@ asmlinkage long sys_plan9_open(struct pt_regs regs)
 	if (!IS_ERR(path)) {
 		fd = get_unused_fd();
 		if (fd >= 0) {
-			f = do_filp_open(AT_FDCWD, path, (int)NULL, omode);
+			f = do_filp_open(AT_FDCWD, path, (int)NULL, omode, (int)NULL);
 			if (IS_ERR(f)) {
 				put_unused_fd(fd);
 				fd = PTR_ERR(f);
@@ -204,7 +204,7 @@ asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
 	dentry = dget(file->f_dentry);
 	fput(file);
 	
-	cwd = __d_path(dentry, mnt, page, PAGE_SIZE);
+	cwd = d_path(dentry, mnt, page, PAGE_SIZE);
 	error = -ERANGE;
 	len = PAGE_SIZE + page - cwd;
 	if (len <= nbuf) {
@@ -248,14 +248,17 @@ asmlinkage long sys_plan9_remove(struct pt_regs regs)
 asmlinkage long sys_plan9_seek(struct pt_regs regs)
 {
 	loff_t offset;
-	unsigned long fd, n, type;
+	unsigned long ret, fd, n, type;
 	unsigned long *addr = (unsigned long *)regs.sp;
 	printk(KERN_INFO "P9: Syscall %ld seek called!\n", regs.ax);
 
 	get_user(n, ++addr);
 	get_user(fd, ++addr);
 	addr = addr + 2;
-	copy_from_user(&offset, addr, sizeof(loff_t));
+	ret = copy_from_user(&offset, addr, sizeof(loff_t));
+	if (ret != 0) {
+		printk(KERN_ALERT "P9: %ld bytes unread for seek!", ret);
+	}
 	get_user(type, ++addr);
 
 	return sys_lseek(fd, (off_t) offset, type);
@@ -264,7 +267,7 @@ asmlinkage long sys_plan9_seek(struct pt_regs regs)
 asmlinkage long sys_plan9_pread(struct pt_regs regs)
 {
 	loff_t offset;
-	unsigned long fd, buf, nbytes;
+	unsigned long ret, fd, buf, nbytes;
 	unsigned long *addr = (unsigned long *)regs.sp;
 	printk(KERN_INFO "P9: Syscall %ld pread called!\n", regs.ax);
 
@@ -272,8 +275,10 @@ asmlinkage long sys_plan9_pread(struct pt_regs regs)
 	get_user(buf, ++addr);
 	get_user(nbytes, ++addr);
 	addr = addr + 2;
-	copy_from_user(&offset, addr, sizeof(loff_t));
-
+	ret = copy_from_user(&offset, addr, sizeof(loff_t));
+	if (ret != 0) {
+		printk(KERN_ALERT "P9: %ld bytes unread for read!", ret);
+	}
 	printk(KERN_INFO "P9: pread: offset: %llx\n", offset);
 	if (offset == 0xffffffff) {
 		printk(KERN_INFO "P9: pread: calling with %lx, %lx, %lx\n",
@@ -287,7 +292,7 @@ asmlinkage long sys_plan9_pread(struct pt_regs regs)
 asmlinkage long sys_plan9_pwrite(struct pt_regs regs)
 {
 	loff_t offset;
-	unsigned long fd, buf, nbytes;
+	unsigned long ret, fd, buf, nbytes;
 	unsigned long *addr = (unsigned long *)regs.sp;
 	printk(KERN_INFO "P9: Syscall %ld pwrite called!\n", regs.ax);
 
@@ -295,8 +300,10 @@ asmlinkage long sys_plan9_pwrite(struct pt_regs regs)
 	get_user(buf, ++addr);
 	get_user(nbytes, ++addr);
 	addr = addr + 2;
-	copy_from_user(&offset, addr, sizeof(loff_t));
-
+	ret = copy_from_user(&offset, addr, sizeof(loff_t));
+	if (ret != 0) {
+		printk(KERN_ALERT "P9: %ld bytes unread for write!", ret);
+	}
 	printk(KERN_INFO "P9: pwrite: offset: %llx\n", offset);
 	if (offset == 0xffffffff) {
 		printk(KERN_INFO "P9: pwrite: calling with %lx, %lx, %lx\n",
@@ -359,7 +366,7 @@ asmlinkage long sys_plan9_rfork(struct pt_regs regs)
 		}
 
 		regs.bx = clone_flags;
-		ret = sys_clone(regs);
+		ret = sys_clone(&regs);
 
 		if (flags & RFCNAMEG) {
 			printk(KERN_INFO "rfork with RFCNAMEG called, unsharing!\n");
