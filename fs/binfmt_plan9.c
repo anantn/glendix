@@ -79,7 +79,7 @@ static unsigned long __user *create_args(char __user * p,
 	
 	/* leave space for TOS: 56 / 4 = 14 */
 	sp -= TOS_SIZE;
-	regs->ebx = (unsigned long)sp;
+	regs->bx = (unsigned long)sp;
     
 	sp -= argc+1;
 	argv = (char __user * __user *) sp;
@@ -197,11 +197,11 @@ static int load_plan9_binary(struct linux_binprm * bprm, struct pt_regs * regs)
 	current->mm->start_stack = 
         	(unsigned long) create_args((char __user *) bprm->p, bprm, regs);
 	
-	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->ebx);
+	printk(KERN_ALERT "9load: Stack start: %lx, TOS: %lx\n", current->mm->start_stack, regs->bx);
 	
 	mangle_tos(ex.entry);
 	start_thread(regs, ex.entry, current->mm->start_stack);
-	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->ebx, regs->eip);
+	printk(KERN_ALERT "9load: Program started: EBX: %lx, EIP: %lx\n", regs->bx, regs->ip);
 	
 	return 0;
 }
