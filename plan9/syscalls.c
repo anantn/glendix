@@ -179,8 +179,7 @@ asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
 	char __user *buf;
 
 	struct file *file;
-	struct vfsmount *mnt;
-	struct dentry *dentry;
+	struct path *path;
 	
 	unsigned long abuf, nbuf, len;
 	char *page = (char *) __get_free_page(GFP_USER);
@@ -199,12 +198,10 @@ asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
 	file = fget(fd);
 	if (!file)
 		return -EBADF;
-
-	mnt = mntget(file->f_vfsmnt);
-	dentry = dget(file->f_dentry);
+	path = &(file->f_path);
 	fput(file);
 	
-	cwd = d_path(dentry, mnt, page, PAGE_SIZE);
+	cwd = d_path(path, page, PAGE_SIZE);
 	error = -ERANGE;
 	len = PAGE_SIZE + page - cwd;
 	if (len <= nbuf) {
@@ -213,11 +210,7 @@ asmlinkage long sys_plan9_fd2path(struct pt_regs regs)
 			error = -EFAULT;
 	}
 
-	dput(dentry);
-	mntput(mnt);
-
 	free_page((unsigned long) page);
-
 	return error;
 }
 
