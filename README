@@ -1,0 +1,21 @@
+GNU/Linux is a popular free operating system in use today. GNU/Linux
+strives to be strictly compliant with POSIX standards, and is thus
+tied down with several requirements and thereby ceases to be innovative
+as far as operating system design is concerned.
+
+Plan 9 from Bell Labs, on the other hand, was designed to be a
+from-scratch successor to UNIX. The Plan 9 operating system offers
+several new features that are both useful and efﬁcient in today’s era
+of personal computing: synthetic ﬁle systems, the “everything is a ﬁle”
+concept, per-process namespaces and a fresh look at graphics and text
+editors are just a few. 
+
+The Plan 9 kernel, however, is relatively new and thus supports only
+a bare minimum of hardware. That is one of the reasons of its
+unpopularity. The Linux kernel on the other hand has had years of
+development behind it, and enjoys the support of several hardware
+components and developers alike. This project aims to combine the
+Plan 9 user-space with the Linux kernel, to offer today’s developer an
+exciting environment combining the best features of both the worlds.
+
+Glendix will be licensed under the MIT License.
